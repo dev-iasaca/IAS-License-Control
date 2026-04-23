@@ -25,6 +25,7 @@ export default function LicenseExpiringPage({ currentRoute, onNavigate }: Props)
   const [loadError, setLoadError] = useState<string | null>(null);
   const [filterStatus, setFilterStatus] = useState<LicenseStatus | 'All'>('All');
   const [filterRange, setFilterRange] = useState<'all' | '1' | '3' | '6'>('all');
+  const [search, setSearch] = useState('');
 
   useEffect(() => {
     let active = true;
@@ -57,14 +58,20 @@ export default function LicenseExpiringPage({ currentRoute, onNavigate }: Props)
   }, [rows]);
 
   const filtered = useMemo(() => {
+    const q = search.trim().toLowerCase();
     return rows.filter((r) => {
       if (filterStatus !== 'All' && r.status !== filterStatus) return false;
       if (filterRange === '1' && r.monthsRemaining > 1) return false;
       if (filterRange === '3' && r.monthsRemaining > 3) return false;
       if (filterRange === '6' && r.monthsRemaining > 6) return false;
+      if (q) {
+        const hay = [r.nik, r.name, r.licenseName, r.instansi, r.position, r.area, r.status, r.endDate]
+          .map((v) => String(v ?? '').toLowerCase()).join(' ');
+        if (!hay.includes(q)) return false;
+      }
       return true;
     });
-  }, [rows, filterStatus, filterRange]);
+  }, [rows, filterStatus, filterRange, search]);
 
   return (
     <AppLayout currentRoute={currentRoute} onNavigate={onNavigate}>
@@ -113,7 +120,12 @@ export default function LicenseExpiringPage({ currentRoute, onNavigate }: Props)
             </div>
             <label className="text-xs text-gray-600 flex items-center gap-2">
               Search:
-              <input className="border border-gray-200 rounded px-2 py-1 text-xs focus:outline-none focus:border-teal-400" />
+              <input
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Cari NIK, nama, lisensi..."
+                className="border border-gray-200 rounded px-2 py-1 text-xs focus:outline-none focus:border-teal-400"
+              />
             </label>
           </div>
 

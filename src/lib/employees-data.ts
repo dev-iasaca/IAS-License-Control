@@ -8,6 +8,7 @@ export type Employee = {
   position: string;
   area: string;
   type: string;
+  status: 'Aktif' | 'Non Aktif';
   previousNik?: string;
   directorateCode?: string;
   group?: string;
@@ -26,13 +27,75 @@ export type Employee = {
 
 export type NewEmployee = Omit<Employee, 'no'>;
 
-export async function fetchEmployees(): Promise<Employee[]> {
-  const { data, error } = await supabase
+let supportsEmployeeStatusColumn: boolean | null = null;
+
+type EmployeeRow = {
+  nik: string | null;
+  name: string | null;
+  organization: string | null;
+  position: string | null;
+  area: string | null;
+  type: string | null;
+  status?: string | null;
+  previous_nik: string | null;
+  directorate_code: string | null;
+  group_name: string | null;
+  group_code: string | null;
+  division_code: string | null;
+  area_nomenklatur: string | null;
+  gender: string | null;
+  morst: string | null;
+  birthplace: string | null;
+  education_level: string | null;
+  university_name: string | null;
+  id_card_number: string | null;
+  email: string | null;
+  phone_number: string | null;
+};
+
+async function fetchEmployeesBase(
+  includeStatus: boolean,
+): Promise<{ data: EmployeeRow[] | null; error: { message: string } | null }> {
+  const selectColumns = includeStatus
+    ? 'id, nik, name, organization, position, area, type, status, previous_nik, directorate_code, group_name, group_code, division_code, area_nomenklatur, gender, morst, birthplace, education_level, university_name, id_card_number, email, phone_number'
+    : 'id, nik, name, organization, position, area, type, previous_nik, directorate_code, group_name, group_code, division_code, area_nomenklatur, gender, morst, birthplace, education_level, university_name, id_card_number, email, phone_number';
+  const result = await (supabase as any)
     .from('employees')
-    .select(
-      'id, nik, name, organization, position, area, type, previous_nik, directorate_code, group_name, group_code, division_code, area_nomenklatur, gender, morst, birthplace, education_level, university_name, id_card_number, email, phone_number',
-    )
+    .select(selectColumns)
     .order('id', { ascending: true });
+  return {
+    data: (result.data ?? null) as EmployeeRow[] | null,
+    error: result.error ? { message: String(result.error.message ?? result.error) } : null,
+  };
+}
+
+function isMissingStatusColumnError(err: unknown): boolean {
+  if (!err) return false;
+  const msg =
+    err instanceof Error
+      ? err.message
+      : typeof err === 'object' && err !== null && 'message' in err
+      ? String((err as { message: unknown }).message ?? '')
+      : String(err);
+  return msg.toLowerCase().includes('column employees.status does not exist');
+}
+
+export async function fetchEmployees(): Promise<Employee[]> {
+  let data: EmployeeRow[] | null = null;
+  let error: { message: string } | null = null;
+
+  if (supportsEmployeeStatusColumn === false) {
+    ({ data, error } = await fetchEmployeesBase(false));
+  } else {
+    ({ data, error } = await fetchEmployeesBase(true));
+    if (error && isMissingStatusColumnError(error)) {
+      supportsEmployeeStatusColumn = false;
+      ({ data, error } = await fetchEmployeesBase(false));
+    } else if (!error) {
+      supportsEmployeeStatusColumn = true;
+    }
+  }
+
   if (error) throw new Error(error.message);
   return (data ?? []).map((row, idx) => ({
     no: idx + 1,
@@ -42,6 +105,7 @@ export async function fetchEmployees(): Promise<Employee[]> {
     position: row.position ?? '',
     area: row.area ?? '',
     type: row.type ?? '',
+    status: row.status === 'Non Aktif' ? 'Non Aktif' : 'Aktif',
     previousNik: row.previous_nik ?? undefined,
     directorateCode: row.directorate_code ?? undefined,
     group: row.group_name ?? undefined,
@@ -60,7 +124,7 @@ export async function fetchEmployees(): Promise<Employee[]> {
 }
 
 export async function insertEmployee(input: NewEmployee, nextNo: number): Promise<Employee> {
-  const { error } = await supabase.from('employees').insert({
+  const payload = {
     nik: input.id,
     name: input.name,
     organization: input.organization || null,
@@ -71,27 +135,57 @@ export async function insertEmployee(input: NewEmployee, nextNo: number): Promis
     gender: input.gender || null,
     email: input.email || null,
     phone_number: input.phoneNumber || null,
-  });
+  };
+  let error;
+  if (supportsEmployeeStatusColumn === false) {
+    ({ error } = await supabase.from('employees').insert(payload));
+  } else {
+    ({ error } = await supabase.from('employees').insert({ ...payload, status: input.status || 'Aktif' }));
+    if (error && isMissingStatusColumnError(error)) {
+      supportsEmployeeStatusColumn = false;
+      ({ error } = await supabase.from('employees').insert(payload));
+    } else if (!error) {
+      supportsEmployeeStatusColumn = true;
+    }
+  }
   if (error) throw new Error(error.message);
-  return { no: nextNo, ...input };
+  return { no: nextNo, ...input, status: input.status || 'Aktif' };
 }
 
 export async function updateEmployee(originalNik: string, input: NewEmployee): Promise<void> {
-  const { error } = await supabase
-    .from('employees')
-    .update({
-      nik: input.id,
-      name: input.name,
-      organization: input.organization || null,
-      position: input.position || null,
-      area: input.area || null,
-      type: input.type || null,
-      group_name: input.group || null,
-      gender: input.gender || null,
-      email: input.email || null,
-      phone_number: input.phoneNumber || null,
-    })
-    .eq('nik', originalNik);
+  const payload = {
+    nik: input.id,
+    name: input.name,
+    organization: input.organization || null,
+    position: input.position || null,
+    area: input.area || null,
+    type: input.type || null,
+    group_name: input.group || null,
+    gender: input.gender || null,
+    email: input.email || null,
+    phone_number: input.phoneNumber || null,
+  };
+  let error;
+  if (supportsEmployeeStatusColumn === false) {
+    ({ error } = await supabase
+      .from('employees')
+      .update(payload)
+      .eq('nik', originalNik));
+  } else {
+    ({ error } = await supabase
+      .from('employees')
+      .update({ ...payload, status: input.status || 'Aktif' })
+      .eq('nik', originalNik));
+    if (error && isMissingStatusColumnError(error)) {
+      supportsEmployeeStatusColumn = false;
+      ({ error } = await supabase
+        .from('employees')
+        .update(payload)
+        .eq('nik', originalNik));
+    } else if (!error) {
+      supportsEmployeeStatusColumn = true;
+    }
+  }
   if (error) throw new Error(error.message);
 }
 
@@ -107,6 +201,7 @@ export const EMPLOYEES: Employee[] = [
     position: 'Branch Baggage Services Solution Cashier',
     area: 'Kantor Cabang SBU Logistics Baggage Services Solution Semarang',
     type: 'Kontrak',
+    status: 'Aktif',
     previousNik: '-',
     directorateCode: 'DR-00416',
     group: 'SBU Logistics Kantor Cabang Baggage Services Solution',
@@ -128,6 +223,7 @@ export const EMPLOYEES: Employee[] = [
     position: 'Porter',
     area: 'Kantor Cabang SBU Cargo Services Batam',
     type: 'Kontrak',
+    status: 'Aktif',
     gender: 'Laki-laki', morst: 'Lajang',
     email: 'iqbal.qa@ias.co.id', phoneNumber: '081234567890',
   },
@@ -137,6 +233,7 @@ export const EMPLOYEES: Employee[] = [
     position: 'Branch Baggage Services Solution Operation Officer',
     area: 'Kantor Cabang SBU Logistics Baggage Services Solution Manado',
     type: 'Kontrak',
+    status: 'Aktif',
     gender: 'Perempuan', morst: 'Lajang',
     email: 'adellin.dc@ias.co.id', phoneNumber: '082112345678',
   },
@@ -146,6 +243,7 @@ export const EMPLOYEES: Employee[] = [
     position: 'Branch Air Express Administration Officer',
     area: 'Kantor Cabang SBU Logistics Air Express Lombok',
     type: 'Kontrak',
+    status: 'Aktif',
     gender: 'Laki-laki', morst: 'Lajang',
     email: 'lalu.aa@ias.co.id', phoneNumber: '081999887766',
   },
@@ -155,6 +253,7 @@ export const EMPLOYEES: Employee[] = [
     position: 'Branch Air Express Operation Officer',
     area: 'Kantor Cabang SBU Logistics Air Express Surabaya',
     type: 'Kontrak',
+    status: 'Aktif',
     gender: 'Laki-laki', morst: 'Lajang',
     email: 'adrian.ef@ias.co.id', phoneNumber: '082233445566',
   },

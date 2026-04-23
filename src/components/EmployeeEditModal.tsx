@@ -12,7 +12,21 @@ type Props = {
   nextNo?: number;
 };
 
-const EMPTY_FORM = {
+type EmployeeForm = {
+  id: string;
+  name: string;
+  organization: string;
+  position: string;
+  group: string;
+  area: string;
+  type: string;
+  status: 'Aktif' | 'Non Aktif';
+  gender: string;
+  email: string;
+  phoneNumber: string;
+};
+
+const EMPTY_FORM: EmployeeForm = {
   id: '',
   name: '',
   organization: '',
@@ -20,6 +34,7 @@ const EMPTY_FORM = {
   group: '',
   area: '',
   type: 'Tetap',
+  status: 'Aktif',
   gender: 'Laki-laki',
   email: '',
   phoneNumber: '',
@@ -27,7 +42,7 @@ const EMPTY_FORM = {
 
 export default function EmployeeEditModal({ open, onClose, employee, onSaved, nextNo = 1 }: Props) {
   const isNew = employee === null;
-  const [form, setForm] = useState(EMPTY_FORM);
+  const [form, setForm] = useState<EmployeeForm>(EMPTY_FORM);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [positions, setPositions] = useState<Position[]>([]);
@@ -56,6 +71,7 @@ export default function EmployeeEditModal({ open, onClose, employee, onSaved, ne
         group: employee?.group ?? '',
         area: employee?.area ?? '',
         type: employee?.type ?? 'Tetap',
+        status: employee?.status ?? 'Aktif',
         gender: employee?.gender ?? 'Laki-laki',
         email: employee?.email ?? '',
         phoneNumber: employee?.phoneNumber ?? '',
@@ -65,7 +81,7 @@ export default function EmployeeEditModal({ open, onClose, employee, onSaved, ne
     }
   }, [open, employee]);
 
-  const update = (patch: Partial<typeof form>) => setForm((prev) => ({ ...prev, ...patch }));
+  const update = (patch: Partial<EmployeeForm>) => setForm((prev) => ({ ...prev, ...patch }));
 
   const handlePositionChange = (positionTitle: string) => {
     const match = positions.find((p) => p.position === positionTitle);
@@ -133,7 +149,13 @@ export default function EmployeeEditModal({ open, onClose, employee, onSaved, ne
             label="Employee Type"
             value={form.type}
             onChange={(v) => update({ type: v })}
-            options={['Tetap', 'Kontrak', 'Magang']}
+            options={['Tetap', 'Kontrak', 'Outsourcing']}
+          />
+          <Select
+            label="Status"
+            value={form.status}
+            onChange={(v) => update({ status: v as 'Aktif' | 'Non Aktif' })}
+            options={['Aktif', 'Non Aktif']}
           />
           <Select
             label="Gender"

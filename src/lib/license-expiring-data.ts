@@ -83,11 +83,43 @@ export async function fetchExpiringLicenses(): Promise<ExpiringLicense[]> {
     .order('end_date', { ascending: true, nullsFirst: false })
     .returns<AssignmentRow[]>();
   if (error) throw new Error(error.message);
+
+  // Fallback lookup for position/area by NIK to avoid empty aggregates
+  // when nested relation does not return those fields consistently.
+  const niks = Array.from(
+    new Set(
+      (data ?? [])
+        .map((row) => row.employee?.nik?.trim())
+        .filter((v): v is string => Boolean(v)),
+    ),
+  );
+
+  const employeeMeta = new Map<string, { position: string | null; area: string | null }>();
+  if (niks.length > 0) {
+    const { data: empData, error: empErr } = await supabase
+      .from('employees')
+      .select('nik, position, area')
+      .in('nik', niks)
+      .returns<Array<{ nik: string; position: string | null; area: string | null }>>();
+    if (empErr) throw new Error(empErr.message);
+    for (const emp of empData ?? []) {
+      employeeMeta.set(emp.nik, { position: emp.position, area: emp.area });
+    }
+  }
+
   const now = new Date();
   return (data ?? []).map((row, idx) => ({
+    ...(() => {
+      const nik = row.employee?.nik ?? '';
+      const meta = nik ? employeeMeta.get(nik) : undefined;
+      return {
+        nik,
+        position: row.employee?.position ?? meta?.position ?? undefined,
+        area: row.employee?.area ?? meta?.area ?? row.organization ?? undefined,
+      };
+    })(),
     id: row.id,
     no: idx + 1,
-    nik: row.employee?.nik ?? '',
     name: row.employee?.name ?? '',
     licenseName: row.license?.name ?? '',
     instansi: row.license?.issuer ?? undefined,
@@ -96,8 +128,6 @@ export async function fetchExpiringLicenses(): Promise<ExpiringLicense[]> {
     monthsRemaining: monthsUntil(row.end_date, now),
     status: row.status,
     organization: row.organization ?? '',
-    position: row.employee?.position ?? undefined,
-    area: row.employee?.area ?? undefined,
   }));
 }
 

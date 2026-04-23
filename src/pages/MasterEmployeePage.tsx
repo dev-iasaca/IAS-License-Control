@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { ArrowUpDown, Download, Plus, RefreshCw, Upload } from 'lucide-react';
 import AppLayout from '../components/AppLayout';
 import PageHeader from '../components/PageHeader';
@@ -29,6 +29,7 @@ const HEADERS = [
   'Position',
   'Area',
   'Employee Type',
+  'Status',
   'Action',
 ];
 
@@ -39,6 +40,17 @@ export default function MasterEmployeePage({ currentRoute, onNavigate }: Props) 
   const [viewing, setViewing] = useState<Employee | null>(null);
   const [editing, setEditing] = useState<Employee | null>(null);
   const [editOpen, setEditOpen] = useState(false);
+  const [search, setSearch] = useState('');
+
+  const filtered = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    if (!q) return items;
+    return items.filter((e) => {
+      const hay = [e.id, e.name, e.organization, e.position, e.area, e.type, e.status, e.group, e.email, e.phoneNumber]
+        .map((v) => String(v ?? '').toLowerCase()).join(' ');
+      return hay.includes(q);
+    });
+  }, [items, search]);
 
   const loadData = async () => {
     setLoading(true);
@@ -93,6 +105,7 @@ export default function MasterEmployeePage({ currentRoute, onNavigate }: Props) 
       { header: 'Position', get: (r) => r.position },
       { header: 'Area', get: (r) => r.area },
       { header: 'Type', get: (r) => r.type },
+      { header: 'Status', get: (r) => r.status },
       { header: 'Group', get: (r) => r.group },
       { header: 'Group Code', get: (r) => r.groupCode },
       { header: 'Directorate Code', get: (r) => r.directorateCode },
@@ -150,7 +163,12 @@ export default function MasterEmployeePage({ currentRoute, onNavigate }: Props) 
             </label>
             <label className="text-xs text-gray-600 flex items-center gap-2">
               Search:
-              <input className="border border-gray-200 rounded px-2 py-1 text-xs focus:outline-none focus:border-teal-400" />
+              <input
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Cari NIK, nama, posisi..."
+                className="border border-gray-200 rounded px-2 py-1 text-xs focus:outline-none focus:border-teal-400"
+              />
             </label>
           </div>
 
@@ -177,10 +195,10 @@ export default function MasterEmployeePage({ currentRoute, onNavigate }: Props) 
                 {!loading && loadError && (
                   <tr><td colSpan={HEADERS.length} className="py-6 text-center text-rose-500">{loadError}</td></tr>
                 )}
-                {!loading && !loadError && items.length === 0 && (
-                  <tr><td colSpan={HEADERS.length} className="py-6 text-center text-gray-400">No data</td></tr>
+                {!loading && !loadError && filtered.length === 0 && (
+                  <tr><td colSpan={HEADERS.length} className="py-6 text-center text-gray-400">{search ? 'Tidak ada data sesuai pencarian' : 'No data'}</td></tr>
                 )}
-                {!loading && !loadError && items.map((e) => (
+                {!loading && !loadError && filtered.map((e) => (
                   <tr key={e.id} className="border-b border-gray-50 hover:bg-gray-50/60">
                     <td className="py-3 px-3 text-gray-500">{e.no}</td>
                     <td className="py-3 px-3 font-medium text-gray-800">{e.id}</td>
@@ -189,6 +207,9 @@ export default function MasterEmployeePage({ currentRoute, onNavigate }: Props) 
                     <td className="py-3 px-3 text-gray-600 max-w-[220px]">{e.position}</td>
                     <td className="py-3 px-3 text-gray-600 max-w-[260px]">{e.area}</td>
                     <td className="py-3 px-3"><Badge color="teal">{e.type}</Badge></td>
+                    <td className="py-3 px-3">
+                      <Badge color={e.status === 'Aktif' ? 'emerald' : 'rose'}>{e.status}</Badge>
+                    </td>
                     <td className="py-3 px-3">
                       <ActionMenu
                         onView={() => setViewing(e)}
@@ -203,7 +224,7 @@ export default function MasterEmployeePage({ currentRoute, onNavigate }: Props) 
           </div>
 
           <div className="flex items-center justify-between mt-4 text-xs text-gray-500 flex-wrap gap-3">
-            <span>Showing 1 to {items.length} of {items.length} entries</span>
+            <span>Showing 1 to {filtered.length} of {filtered.length} entries</span>
             <div className="flex items-center gap-1">
               <button className="px-2.5 py-1 border border-gray-200 rounded text-gray-400">Previous</button>
               <button className="px-2.5 py-1 bg-teal-500 text-white rounded">1</button>
@@ -224,5 +245,4 @@ export default function MasterEmployeePage({ currentRoute, onNavigate }: Props) 
     </AppLayout>
   );
 }
-
 

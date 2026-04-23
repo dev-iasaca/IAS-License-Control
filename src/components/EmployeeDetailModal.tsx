@@ -26,6 +26,7 @@ export default function EmployeeDetailModal({ open, onClose, employee }: Props) 
             <DetailRow label="Area" value={employee.area} />
             <DetailRow label="Area Nomenklatur" value={employee.areaNomenklatur} />
             <DetailRow label="Employee Type" value={employee.type} />
+            <DetailRow label="Status" value={employee.status} />
             <DetailRow label="Gender" value={employee.gender} />
             <DetailRow label="Morst" value={employee.morst} />
             <DetailRow label="Birthplace" value={employee.birthplace} />
