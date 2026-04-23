@@ -1,23 +1,23 @@
 import { useEffect, useState } from 'react';
-import { ArrowUpDown, ChevronDown, Download, Plus, Upload } from 'lucide-react';
+import { ArrowUpDown, Download, Plus, Upload } from 'lucide-react';
 import AppLayout from '../components/AppLayout';
 import PageHeader from '../components/PageHeader';
 import { ActionBtn, Card } from '../components/shared';
 import ActionMenu from '../components/ActionMenu';
-import JobFamilyEditModal from '../components/JobFamilyEditModal';
-import { deleteJobFamily, fetchJobFamilies, type JobFamily } from '../lib/job-families-data';
+import AreaEditModal from '../components/AreaEditModal';
+import { deleteArea, fetchAreas, type Area } from '../lib/areas-data';
 import { exportToXlsx, type ExportColumn } from '../lib/export-excel';
 import type { Route } from '../App';
 
 type Props = { currentRoute: Route; onNavigate: (r: Route) => void };
 
-const HEADERS = ['#', 'Code Job Family', 'Name Job Family', 'Name Job Family Align', 'Action'];
+const HEADERS = ['#', 'Kode Area', 'Area', 'Action'];
 
-export default function MasterJobFamilyPage({ currentRoute, onNavigate }: Props) {
-  const [items, setItems] = useState<JobFamily[]>([]);
+export default function MasterAreaPage({ currentRoute, onNavigate }: Props) {
+  const [items, setItems] = useState<Area[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
-  const [editing, setEditing] = useState<JobFamily | null>(null);
+  const [editing, setEditing] = useState<Area | null>(null);
   const [editOpen, setEditOpen] = useState(false);
 
   useEffect(() => {
@@ -25,7 +25,7 @@ export default function MasterJobFamilyPage({ currentRoute, onNavigate }: Props)
       setLoading(true);
       setLoadError(null);
       try {
-        setItems(await fetchJobFamilies());
+        setItems(await fetchAreas());
       } catch (e) {
         setLoadError(e instanceof Error ? e.message : String(e));
       } finally {
@@ -34,15 +34,15 @@ export default function MasterJobFamilyPage({ currentRoute, onNavigate }: Props)
     })();
   }, []);
 
-  const openEdit = (j: JobFamily | null) => {
-    setEditing(j);
+  const openEdit = (a: Area | null) => {
+    setEditing(a);
     setEditOpen(true);
   };
   const closeEdit = () => {
     setEditOpen(false);
     setEditing(null);
   };
-  const handleSaved = (item: JobFamily) => {
+  const handleSaved = (item: Area) => {
     setItems((prev) => {
       const idx = prev.findIndex((x) => x.no === item.no);
       if (idx === -1) return [...prev, item];
@@ -52,37 +52,36 @@ export default function MasterJobFamilyPage({ currentRoute, onNavigate }: Props)
     });
   };
 
-  const handleDelete = async (j: JobFamily) => {
-    if (!window.confirm(`Hapus job family "${j.name}" (${j.code})?`)) return;
+  const handleDelete = async (a: Area) => {
+    if (!window.confirm(`Hapus area "${a.name}" (${a.code})?`)) return;
     try {
-      await deleteJobFamily(j.code);
-      setItems((prev) => prev.filter((x) => x.code !== j.code));
+      await deleteArea(a.code);
+      setItems((prev) => prev.filter((x) => x.code !== a.code));
     } catch (err) {
-      window.alert(err instanceof Error ? err.message : 'Gagal menghapus job family.');
+      window.alert(err instanceof Error ? err.message : 'Gagal menghapus area.');
     }
   };
 
   const handleExport = () => {
-    const columns: ExportColumn<JobFamily>[] = [
+    const columns: ExportColumn<Area>[] = [
       { header: 'No', get: (r) => r.no },
-      { header: 'Code Job Family', get: (r) => r.code },
-      { header: 'Name Job Family', get: (r) => r.name },
-      { header: 'Name Job Family Align', get: (r) => r.nameAlign },
+      { header: 'Kode Area', get: (r) => r.code },
+      { header: 'Area', get: (r) => r.name },
     ];
-    exportToXlsx({ fileName: `master-job-family-${new Date().toISOString().slice(0, 10)}`, sheetName: 'Job Families', columns, rows: items });
+    exportToXlsx({ fileName: `master-area-${new Date().toISOString().slice(0, 10)}`, sheetName: 'Area', columns, rows: items });
   };
 
   return (
     <AppLayout currentRoute={currentRoute} onNavigate={onNavigate}>
       <PageHeader
-        title="Master Job Family"
-        breadcrumb={['Home', 'Master Data', 'Master Job Family']}
+        title="Master Area"
+        breadcrumb={['Home', 'Master Data', 'Master Area']}
         actions={
           <>
             <ActionBtn icon={Upload} color="teal">Import</ActionBtn>
             <ActionBtn icon={Download} color="emerald" onClick={handleExport}>Export Excel</ActionBtn>
             <ActionBtn icon={Plus} color="blue" onClick={() => openEdit(null)}>
-              Add Job Family
+              Add Area
             </ActionBtn>
           </>
         }
@@ -90,17 +89,7 @@ export default function MasterJobFamilyPage({ currentRoute, onNavigate }: Props)
 
       <div className="max-w-screen-2xl mx-auto px-6 py-5 space-y-5">
         <Card>
-          <h3 className="text-sm font-semibold text-gray-800 mb-4">
-            List Job Family Member
-          </h3>
-
-          <button
-            type="button"
-            className="flex items-center justify-between w-full px-3 py-2.5 mb-4 text-xs text-gray-400 bg-white border border-gray-200 rounded-md hover:border-gray-300"
-          >
-            <span>-Pilih Organization-</span>
-            <ChevronDown className="w-3.5 h-3.5" />
-          </button>
+          <h3 className="text-sm font-semibold text-gray-800 mb-4">List Area</h3>
 
           <label className="text-xs text-gray-600 flex items-center gap-2 mb-4">
             Show
@@ -138,14 +127,13 @@ export default function MasterJobFamilyPage({ currentRoute, onNavigate }: Props)
                 {!loading && !loadError && items.length === 0 && (
                   <tr><td colSpan={HEADERS.length} className="py-6 text-center text-gray-400">No data</td></tr>
                 )}
-                {!loading && !loadError && items.map((j) => (
-                  <tr key={j.code} className="border-b border-gray-50 hover:bg-gray-50/60">
-                    <td className="py-3 px-3 text-gray-500">{j.no}</td>
-                    <td className="py-3 px-3 text-gray-700">{j.code}</td>
-                    <td className="py-3 px-3 text-teal-600">{j.name}</td>
-                    <td className="py-3 px-3 text-teal-600">{j.nameAlign}</td>
+                {!loading && !loadError && items.map((a) => (
+                  <tr key={a.code} className="border-b border-gray-50 hover:bg-gray-50/60">
+                    <td className="py-3 px-3 text-gray-500">{a.no}</td>
+                    <td className="py-3 px-3 text-gray-700">{a.code}</td>
+                    <td className="py-3 px-3 text-teal-600">{a.name}</td>
                     <td className="py-3 px-3">
-                      <ActionMenu onEdit={() => openEdit(j)} onDelete={() => void handleDelete(j)} />
+                      <ActionMenu onEdit={() => openEdit(a)} onDelete={() => void handleDelete(a)} />
                     </td>
                   </tr>
                 ))}
@@ -164,10 +152,10 @@ export default function MasterJobFamilyPage({ currentRoute, onNavigate }: Props)
         </Card>
       </div>
 
-      <JobFamilyEditModal
+      <AreaEditModal
         open={editOpen}
         onClose={closeEdit}
-        jobFamily={editing}
+        area={editing}
         onSaved={handleSaved}
         nextNo={items.length + 1}
       />

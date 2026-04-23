@@ -1,3 +1,5 @@
+import { supabase } from './supabase';
+
 export type Employee = {
   no: number;
   id: string;
@@ -5,16 +7,11 @@ export type Employee = {
   organization: string;
   position: string;
   area: string;
-  grade: string;
   type: string;
-  talentCluster: string;
   previousNik?: string;
-  jobTitle?: string;
-  directorate?: string;
   directorateCode?: string;
   group?: string;
   groupCode?: string;
-  division?: string;
   divisionCode?: string;
   areaNomenklatur?: string;
   gender?: string;
@@ -25,8 +22,83 @@ export type Employee = {
   idCardNumber?: string;
   email?: string;
   phoneNumber?: string;
-  lineManager?: string;
 };
+
+export type NewEmployee = Omit<Employee, 'no'>;
+
+export async function fetchEmployees(): Promise<Employee[]> {
+  const { data, error } = await supabase
+    .from('employees')
+    .select(
+      'id, nik, name, organization, position, area, type, previous_nik, directorate_code, group_name, group_code, division_code, area_nomenklatur, gender, morst, birthplace, education_level, university_name, id_card_number, email, phone_number',
+    )
+    .order('id', { ascending: true });
+  if (error) throw new Error(error.message);
+  return (data ?? []).map((row, idx) => ({
+    no: idx + 1,
+    id: row.nik ?? '',
+    name: row.name ?? '',
+    organization: row.organization ?? '',
+    position: row.position ?? '',
+    area: row.area ?? '',
+    type: row.type ?? '',
+    previousNik: row.previous_nik ?? undefined,
+    directorateCode: row.directorate_code ?? undefined,
+    group: row.group_name ?? undefined,
+    groupCode: row.group_code ?? undefined,
+    divisionCode: row.division_code ?? undefined,
+    areaNomenklatur: row.area_nomenklatur ?? undefined,
+    gender: row.gender ?? undefined,
+    morst: row.morst ?? undefined,
+    birthplace: row.birthplace ?? undefined,
+    educationLevel: row.education_level ?? undefined,
+    universityName: row.university_name ?? undefined,
+    idCardNumber: row.id_card_number ?? undefined,
+    email: row.email ?? undefined,
+    phoneNumber: row.phone_number ?? undefined,
+  }));
+}
+
+export async function insertEmployee(input: NewEmployee, nextNo: number): Promise<Employee> {
+  const { error } = await supabase.from('employees').insert({
+    nik: input.id,
+    name: input.name,
+    organization: input.organization || null,
+    position: input.position || null,
+    area: input.area || null,
+    type: input.type || null,
+    group_name: input.group || null,
+    gender: input.gender || null,
+    email: input.email || null,
+    phone_number: input.phoneNumber || null,
+  });
+  if (error) throw new Error(error.message);
+  return { no: nextNo, ...input };
+}
+
+export async function updateEmployee(originalNik: string, input: NewEmployee): Promise<void> {
+  const { error } = await supabase
+    .from('employees')
+    .update({
+      nik: input.id,
+      name: input.name,
+      organization: input.organization || null,
+      position: input.position || null,
+      area: input.area || null,
+      type: input.type || null,
+      group_name: input.group || null,
+      gender: input.gender || null,
+      email: input.email || null,
+      phone_number: input.phoneNumber || null,
+    })
+    .eq('nik', originalNik);
+  if (error) throw new Error(error.message);
+}
+
+export async function deleteEmployee(nik: string): Promise<void> {
+  const { error } = await supabase.from('employees').delete().eq('nik', nik);
+  if (error) throw new Error(error.message);
+}
 
 export const EMPLOYEES: Employee[] = [
   {
@@ -34,14 +106,11 @@ export const EMPLOYEES: Employee[] = [
     organization: 'PT Integrasi Aviasi Solusi',
     position: 'Branch Baggage Services Solution Cashier',
     area: 'Kantor Cabang SBU Logistics Baggage Services Solution Semarang',
-    grade: '-', type: 'Kontrak', talentCluster: 'Unfit (Talent Cluster 1)',
+    type: 'Kontrak',
     previousNik: '-',
-    jobTitle: 'FAJT',
-    directorate: 'SBU Logistics',
     directorateCode: 'DR-00416',
     group: 'SBU Logistics Kantor Cabang Baggage Services Solution',
     groupCode: 'GR-17773',
-    division: 'Branch Baggage Services Solution Semarang',
     divisionCode: 'DV-09029',
     areaNomenklatur: 'SBULG-BSS-SRG',
     gender: 'Perempuan',
@@ -52,15 +121,13 @@ export const EMPLOYEES: Employee[] = [
     idCardNumber: '3328086805010004',
     email: 'samiaasih@gmail.com',
     phoneNumber: '082243466112',
-    lineManager: '-',
   },
   {
     no: 2, id: '250453', name: 'Muhammad Iqbal Qabrani Arsyad',
     organization: 'PT Integrasi Aviasi Solusi',
     position: 'Porter',
     area: 'Kantor Cabang SBU Cargo Services Batam',
-    grade: '-', type: 'Kontrak', talentCluster: 'Unfit (Talent Cluster 1)',
-    jobTitle: 'FAJT', directorate: 'SBU Cargo',
+    type: 'Kontrak',
     gender: 'Laki-laki', morst: 'Lajang',
     email: 'iqbal.qa@ias.co.id', phoneNumber: '081234567890',
   },
@@ -69,8 +136,7 @@ export const EMPLOYEES: Employee[] = [
     organization: 'PT Integrasi Aviasi Solusi',
     position: 'Branch Baggage Services Solution Operation Officer',
     area: 'Kantor Cabang SBU Logistics Baggage Services Solution Manado',
-    grade: '8', type: 'Kontrak', talentCluster: 'Unfit (Talent Cluster 1)',
-    jobTitle: 'FAJT', directorate: 'SBU Logistics',
+    type: 'Kontrak',
     gender: 'Perempuan', morst: 'Lajang',
     email: 'adellin.dc@ias.co.id', phoneNumber: '082112345678',
   },
@@ -79,8 +145,7 @@ export const EMPLOYEES: Employee[] = [
     organization: 'PT Integrasi Aviasi Solusi',
     position: 'Branch Air Express Administration Officer',
     area: 'Kantor Cabang SBU Logistics Air Express Lombok',
-    grade: '-', type: 'Kontrak', talentCluster: 'Unfit (Talent Cluster 1)',
-    jobTitle: 'FAJT', directorate: 'SBU Logistics',
+    type: 'Kontrak',
     gender: 'Laki-laki', morst: 'Lajang',
     email: 'lalu.aa@ias.co.id', phoneNumber: '081999887766',
   },
@@ -89,8 +154,7 @@ export const EMPLOYEES: Employee[] = [
     organization: 'PT Integrasi Aviasi Solusi',
     position: 'Branch Air Express Operation Officer',
     area: 'Kantor Cabang SBU Logistics Air Express Surabaya',
-    grade: '7', type: 'Kontrak', talentCluster: 'Unfit (Talent Cluster 1)',
-    jobTitle: 'FAJT', directorate: 'SBU Logistics',
+    type: 'Kontrak',
     gender: 'Laki-laki', morst: 'Lajang',
     email: 'adrian.ef@ias.co.id', phoneNumber: '082233445566',
   },

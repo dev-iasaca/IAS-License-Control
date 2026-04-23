@@ -1,45 +1,54 @@
-import { useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { AlertTriangle, Briefcase, FileBarChart, MapPin } from 'lucide-react';
 import AppLayout from '../components/AppLayout';
 import PageHeader from '../components/PageHeader';
 import { Card } from '../components/shared';
 import BarList, { type BarItem } from '../components/BarList';
 import {
-  EXPIRING_LICENSES,
+  fetchExpiringLicenses,
   monthsBadgeColor,
   monthsLabel,
+  type ExpiringLicense,
 } from '../lib/license-expiring-data';
 import {
-  LICENSE_BY_LOCATION,
-  LICENSE_BY_POSITION,
+  computeSummary,
+  countByLocation,
+  countByPosition,
 } from '../lib/license-resume-data';
 import type { Route } from '../App';
 
 type Props = { currentRoute: Route; onNavigate: (r: Route) => void };
 
 export default function LicenseResumePage({ currentRoute, onNavigate }: Props) {
-  const totalLicense = useMemo(
-    () => LICENSE_BY_POSITION.reduce((sum, i) => sum + i.count, 0),
-    [],
-  );
-  const totalPosition = LICENSE_BY_POSITION.length;
-  const totalLocation = LICENSE_BY_LOCATION.length;
-  const expiringSoon = useMemo(
-    () => EXPIRING_LICENSES.filter((l) => l.monthsRemaining <= 3).length,
-    [],
-  );
+  const [rows, setRows] = useState<ExpiringLicense[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let active = true;
+    setLoading(true);
+    setLoadError(null);
+    fetchExpiringLicenses()
+      .then((data) => { if (active) setRows(data); })
+      .catch((err) => { if (active) setLoadError(err instanceof Error ? err.message : String(err)); })
+      .finally(() => { if (active) setLoading(false); });
+    return () => { active = false; };
+  }, []);
+
+  const summary = useMemo(() => computeSummary(rows), [rows]);
 
   const positionItems: BarItem[] = useMemo(
-    () => LICENSE_BY_POSITION.map((i) => ({ label: i.key, value: i.count, color: 'teal' })),
-    [],
+    () => countByPosition(rows).map((i) => ({ label: i.key, value: i.count, color: 'teal' })),
+    [rows],
   );
   const locationItems: BarItem[] = useMemo(
-    () => LICENSE_BY_LOCATION.map((i) => ({ label: i.key, value: i.count, color: 'sky' })),
-    [],
+    () => countByLocation(rows).map((i) => ({ label: i.key, value: i.count, color: 'sky' })),
+    [rows],
   );
   const expiringItems: BarItem[] = useMemo(
     () =>
-      [...EXPIRING_LICENSES]
+      [...rows]
+        .filter((l) => l.monthsRemaining > 0)
         .sort((a, b) => a.monthsRemaining - b.monthsRemaining)
         .slice(0, 10)
         .map((l) => ({
@@ -51,7 +60,7 @@ export default function LicenseResumePage({ currentRoute, onNavigate }: Props) {
             ' Habis',
           ),
         })),
-    [],
+    [rows],
   );
 
   return (
@@ -62,11 +71,16 @@ export default function LicenseResumePage({ currentRoute, onNavigate }: Props) {
       />
 
       <div className="max-w-screen-2xl mx-auto px-6 py-5 space-y-5">
+        {loadError && (
+          <div className="rounded-md border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-600">
+            Gagal memuat data dashboard: {loadError}
+          </div>
+        )}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <StatCard icon={FileBarChart} label="Total Lisensi" value={totalLicense} color="sky" />
-          <StatCard icon={Briefcase} label="Total Jabatan" value={totalPosition} color="teal" />
-          <StatCard icon={MapPin} label="Total Lokasi" value={totalLocation} color="blue" />
-          <StatCard icon={AlertTriangle} label="Akan Habis (≤ 3 bulan)" value={expiringSoon} color="rose" />
+          <StatCard icon={FileBarChart} label="Total Lisensi" value={summary.totalLicense} color="sky" loading={loading} />
+          <StatCard icon={Briefcase} label="Total Jabatan" value={summary.totalPosition} color="teal" loading={loading} />
+          <StatCard icon={MapPin} label="Total Lokasi" value={summary.totalLocation} color="blue" loading={loading} />
+          <StatCard icon={AlertTriangle} label="Akan Habis (≤ 3 bulan)" value={summary.expiringSoon} color="rose" loading={loading} />
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
@@ -114,11 +128,13 @@ function StatCard({
   label,
   value,
   color,
+  loading,
 }: {
   icon: typeof AlertTriangle;
   label: string;
   value: number;
   color: 'sky' | 'rose' | 'teal' | 'blue';
+  loading?: boolean;
 }) {
   const ring: Record<typeof color, string> = {
     sky: 'bg-sky-50 text-sky-600',
@@ -133,7 +149,9 @@ function StatCard({
       </div>
       <div className="min-w-0">
         <div className="text-xs text-gray-500">{label}</div>
-        <div className="text-xl font-semibold text-gray-800">{value}</div>
+        <div className="text-xl font-semibold text-gray-800">
+          {loading ? <span className="text-gray-300">…</span> : value}
+        </div>
       </div>
     </div>
   );

@@ -1,36 +1,36 @@
 import { useEffect, useState } from 'react';
 import Modal from './Modal';
-import { insertJobFamily, updateJobFamily, type JobFamily } from '../lib/job-families-data';
+import { insertPosition, updatePosition, type Position } from '../lib/positions-data';
 
 type Props = {
   open: boolean;
   onClose: () => void;
-  jobFamily: JobFamily | null;
-  onSaved?: (item: JobFamily) => void;
+  position: Position | null;
+  onSaved?: (item: Position) => void;
   nextNo?: number;
 };
 
-export default function JobFamilyEditModal({ open, onClose, jobFamily, onSaved, nextNo = 1 }: Props) {
-  const isNew = jobFamily === null;
+export default function PositionEditModal({ open, onClose, position, onSaved, nextNo = 1 }: Props) {
+  const isNew = position === null;
   const [code, setCode] = useState('');
-  const [name, setName] = useState('');
-  const [nameAlign, setNameAlign] = useState('');
+  const [group, setGroup] = useState('');
+  const [positionTitle, setPositionTitle] = useState('');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (open) {
-      setCode(jobFamily?.code ?? '');
-      setName(jobFamily?.name ?? '');
-      setNameAlign(jobFamily?.nameAlign ?? '');
+      setCode(position?.code ?? '');
+      setGroup(position?.group ?? '');
+      setPositionTitle(position?.position ?? '');
       setError(null);
       setSaving(false);
     }
-  }, [open, jobFamily]);
+  }, [open, position]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!code.trim() || !name.trim() || !nameAlign.trim()) {
+    if (!code.trim() || !group.trim() || !positionTitle.trim()) {
       setError('Semua field wajib diisi.');
       return;
     }
@@ -38,11 +38,11 @@ export default function JobFamilyEditModal({ open, onClose, jobFamily, onSaved, 
     setError(null);
     try {
       if (isNew) {
-        const created = await insertJobFamily({ code, name, nameAlign }, nextNo);
+        const created = await insertPosition({ code, group, position: positionTitle }, nextNo);
         onSaved?.(created);
-      } else if (jobFamily) {
-        await updateJobFamily(jobFamily.code, { code, name, nameAlign });
-        onSaved?.({ ...jobFamily, code, name, nameAlign });
+      } else if (position) {
+        await updatePosition(position.code, { code, group, position: positionTitle });
+        onSaved?.({ ...position, code, group, position: positionTitle });
       }
       onClose();
     } catch (err) {
@@ -56,14 +56,14 @@ export default function JobFamilyEditModal({ open, onClose, jobFamily, onSaved, 
     <Modal
       open={open}
       onClose={onClose}
-      title={isNew ? 'Add Job Family' : 'Edit Job Family'}
+      title={isNew ? 'Add Jabatan' : 'Edit Jabatan'}
       size="md"
     >
       <form onSubmit={handleSubmit}>
         <div className="px-6 py-5 space-y-4">
-          <Field label="Code Job Family" value={code} onChange={setCode} placeholder="JFM-00000" />
-          <Field label="Name Job Family" value={name} onChange={setName} />
-          <Field label="Name Job Family Align" value={nameAlign} onChange={setNameAlign} />
+          <Field label="Kode Jabatan" value={code} onChange={setCode} placeholder="JBT-00000" />
+          <Field label="Group" value={group} onChange={setGroup} />
+          <Field label="Position" value={positionTitle} onChange={setPositionTitle} />
           {error && (
             <p className="text-xs text-rose-600 bg-rose-50 border border-rose-100 rounded px-3 py-2">
               {error}
@@ -84,7 +84,7 @@ export default function JobFamilyEditModal({ open, onClose, jobFamily, onSaved, 
             disabled={saving}
             className="px-4 py-2 text-xs font-medium text-white bg-teal-500 rounded-md hover:bg-teal-600 disabled:opacity-60"
           >
-            {saving ? 'Saving…' : isNew ? 'Create Job Family' : 'Save Changes'}
+            {saving ? 'Saving…' : isNew ? 'Create Jabatan' : 'Save Changes'}
           </button>
         </div>
       </form>

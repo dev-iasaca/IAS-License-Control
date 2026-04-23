@@ -17,7 +17,9 @@ export default function Sidebar({ currentRoute, onNavigate }: Props) {
     currentRoute === 'master-account' ||
     currentRoute === 'master-license' ||
     currentRoute === 'master-vendor' ||
-    currentRoute === 'master-job-family';
+    currentRoute === 'master-job-family' ||
+    currentRoute === 'master-position' ||
+    currentRoute === 'master-area';
 
   return (
     <aside className="hidden md:flex w-64 bg-white border-r border-gray-100 flex-shrink-0 flex-col">
@@ -122,6 +124,18 @@ export default function Sidebar({ currentRoute, onNavigate }: Props) {
                 onClick={() => onNavigate('master-job-family')}
               >
                 Master Job Family
+              </SideLink>
+              <SideLink
+                active={currentRoute === 'master-position'}
+                onClick={() => onNavigate('master-position')}
+              >
+                Master Jabatan
+              </SideLink>
+              <SideLink
+                active={currentRoute === 'master-area'}
+                onClick={() => onNavigate('master-area')}
+              >
+                Master Area
               </SideLink>
             </div>
           )}

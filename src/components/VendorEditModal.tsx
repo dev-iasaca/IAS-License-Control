@@ -1,22 +1,38 @@
 import { useEffect, useState } from 'react';
 import { Plus, Trash2 } from 'lucide-react';
 import Modal from './Modal';
-import type { Training, Vendor } from '../lib/vendors-data';
+import { insertVendor, updateVendor, type Training, type Vendor } from '../lib/vendors-data';
 
 type Props = {
   open: boolean;
   onClose: () => void;
   vendor: Vendor | null;
+  onSaved?: (item: Vendor) => void;
+  nextNo?: number;
 };
 
 const EMPTY_TRAINING: Training = { name: '', type: '', location: '', estimatedCost: '' };
 
-export default function VendorEditModal({ open, onClose, vendor }: Props) {
+export default function VendorEditModal({ open, onClose, vendor, onSaved, nextNo = 1 }: Props) {
   const isNew = vendor === null;
+  const [name, setName] = useState('');
+  const [address, setAddress] = useState('');
+  const [phone, setPhone] = useState('');
+  const [email, setEmail] = useState('');
   const [trainings, setTrainings] = useState<Training[]>([]);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (open) setTrainings(vendor?.trainings ?? []);
+    if (open) {
+      setName(vendor?.name ?? '');
+      setAddress(vendor?.address ?? '');
+      setPhone(vendor?.phone ?? '');
+      setEmail(vendor?.email ?? '');
+      setTrainings(vendor?.trainings ?? []);
+      setError(null);
+      setSaving(false);
+    }
   }, [vendor, open]);
 
   const updateTraining = (i: number, patch: Partial<Training>) => {
@@ -29,6 +45,33 @@ export default function VendorEditModal({ open, onClose, vendor }: Props) {
     setTrainings((prev) => [...prev, { ...EMPTY_TRAINING }]);
   };
 
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!name.trim()) {
+      setError('Nama Vendor wajib diisi.');
+      return;
+    }
+    setSaving(true);
+    setError(null);
+    try {
+      if (isNew) {
+        const created = await insertVendor(
+          { name, address, phone, email, trainings },
+          nextNo,
+        );
+        onSaved?.(created);
+      } else if (vendor) {
+        await updateVendor(vendor.name, { name, address, phone, email, trainings });
+        onSaved?.({ ...vendor, name, address, phone, email, trainings });
+      }
+      onClose();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Gagal menyimpan data.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
   return (
     <Modal
       open={open}
@@ -36,18 +79,13 @@ export default function VendorEditModal({ open, onClose, vendor }: Props) {
       title={isNew ? 'Add Vendor' : 'Edit Vendor'}
       size="lg"
     >
-      <form
-        onSubmit={(e) => {
-          e.preventDefault();
-          onClose();
-        }}
-      >
+      <form onSubmit={handleSubmit}>
         <div className="px-6 py-5 max-h-[70vh] overflow-y-auto space-y-5">
           <div className="space-y-4">
-            <Field label="Nama Vendor" defaultValue={vendor?.name} />
-            <Field label="Alamat" defaultValue={vendor?.address} textarea />
-            <Field label="Nomor Telfon" defaultValue={vendor?.phone} />
-            <Field label="Email" type="email" defaultValue={vendor?.email} />
+            <ControlledField label="Nama Vendor" value={name} onChange={setName} />
+            <ControlledField label="Alamat" value={address} onChange={setAddress} textarea />
+            <ControlledField label="Nomor Telfon" value={phone} onChange={setPhone} />
+            <ControlledField label="Email" type="email" value={email} onChange={setEmail} />
           </div>
 
           <div className="pt-2">
@@ -83,20 +121,27 @@ export default function VendorEditModal({ open, onClose, vendor }: Props) {
               </div>
             )}
           </div>
+          {error && (
+            <p className="text-xs text-rose-600 bg-rose-50 border border-rose-100 rounded px-3 py-2">
+              {error}
+            </p>
+          )}
         </div>
         <div className="flex justify-end gap-2 px-6 py-3 border-t border-gray-100 bg-gray-50 rounded-b-lg">
           <button
             type="button"
             onClick={onClose}
-            className="px-4 py-2 text-xs font-medium text-gray-600 bg-white border border-gray-200 rounded-md hover:bg-gray-50"
+            disabled={saving}
+            className="px-4 py-2 text-xs font-medium text-gray-600 bg-white border border-gray-200 rounded-md hover:bg-gray-50 disabled:opacity-50"
           >
             Cancel
           </button>
           <button
             type="submit"
-            className="px-4 py-2 text-xs font-medium text-white bg-teal-500 rounded-md hover:bg-teal-600"
+            disabled={saving}
+            className="px-4 py-2 text-xs font-medium text-white bg-teal-500 rounded-md hover:bg-teal-600 disabled:opacity-60"
           >
-            {isNew ? 'Create Vendor' : 'Save Changes'}
+            {saving ? 'Saving…' : isNew ? 'Create Vendor' : 'Save Changes'}
           </button>
         </div>
       </form>
@@ -163,34 +208,13 @@ function ControlledField({
   value,
   onChange,
   placeholder,
+  type = 'text',
+  textarea = false,
 }: {
   label: string;
   value: string;
   onChange: (v: string) => void;
   placeholder?: string;
-}) {
-  return (
-    <label className="flex flex-col gap-1 text-xs">
-      <span className="text-gray-600">{label}</span>
-      <input
-        type="text"
-        value={value}
-        placeholder={placeholder}
-        onChange={(e) => onChange(e.target.value)}
-        className="border border-gray-200 rounded-md px-3 py-2 text-xs bg-white focus:outline-none focus:border-teal-400"
-      />
-    </label>
-  );
-}
-
-function Field({
-  label,
-  defaultValue,
-  type = 'text',
-  textarea = false,
-}: {
-  label: string;
-  defaultValue?: string;
   type?: string;
   textarea?: boolean;
 }) {
@@ -199,15 +223,18 @@ function Field({
       <span className="text-gray-600">{label}</span>
       {textarea ? (
         <textarea
-          defaultValue={defaultValue ?? ''}
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
           rows={3}
           className="border border-gray-200 rounded-md px-3 py-2 text-xs focus:outline-none focus:border-teal-400 resize-none"
         />
       ) : (
         <input
           type={type}
-          defaultValue={defaultValue ?? ''}
-          className="border border-gray-200 rounded-md px-3 py-2 text-xs focus:outline-none focus:border-teal-400"
+          value={value}
+          placeholder={placeholder}
+          onChange={(e) => onChange(e.target.value)}
+          className="border border-gray-200 rounded-md px-3 py-2 text-xs bg-white focus:outline-none focus:border-teal-400"
         />
       )}
     </label>

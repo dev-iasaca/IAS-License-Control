@@ -1,9 +1,54 @@
+import { supabase } from './supabase';
+
 export type JobFamily = {
   no: number;
   code: string;
   name: string;
   nameAlign: string;
 };
+
+export type NewJobFamily = Omit<JobFamily, 'no'>;
+
+export async function fetchJobFamilies(): Promise<JobFamily[]> {
+  const { data, error } = await supabase
+    .from('job_families')
+    .select('id, code, name, name_align')
+    .order('code', { ascending: true });
+  if (error) throw new Error(error.message);
+  return (data ?? []).map((row, idx) => ({
+    no: idx + 1,
+    code: row.code ?? '',
+    name: row.name ?? '',
+    nameAlign: row.name_align ?? '',
+  }));
+}
+
+export async function insertJobFamily(input: NewJobFamily, nextNo: number): Promise<JobFamily> {
+  const { error } = await supabase.from('job_families').insert({
+    code: input.code,
+    name: input.name,
+    name_align: input.nameAlign,
+  });
+  if (error) throw new Error(error.message);
+  return { no: nextNo, ...input };
+}
+
+export async function updateJobFamily(originalCode: string, input: NewJobFamily): Promise<void> {
+  const { error } = await supabase
+    .from('job_families')
+    .update({
+      code: input.code,
+      name: input.name,
+      name_align: input.nameAlign,
+    })
+    .eq('code', originalCode);
+  if (error) throw new Error(error.message);
+}
+
+export async function deleteJobFamily(code: string): Promise<void> {
+  const { error } = await supabase.from('job_families').delete().eq('code', code);
+  if (error) throw new Error(error.message);
+}
 
 export const JOB_FAMILIES: JobFamily[] = [
   { no: 1, code: 'JFM-00416', name: 'Airport Engineering', nameAlign: 'Airport Engineering' },

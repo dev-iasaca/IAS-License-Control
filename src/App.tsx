@@ -6,6 +6,8 @@ import MasterAccountPage from './pages/MasterAccountPage';
 import MasterLicensePage from './pages/MasterLicensePage';
 import MasterVendorPage from './pages/MasterVendorPage';
 import MasterJobFamilyPage from './pages/MasterJobFamilyPage';
+import MasterPositionPage from './pages/MasterPositionPage';
+import MasterAreaPage from './pages/MasterAreaPage';
 import LicenseExpiringPage from './pages/LicenseExpiringPage';
 import LicenseResumePage from './pages/LicenseResumePage';
 import { useAuth } from './lib/auth';
@@ -19,7 +21,9 @@ export type Route =
   | 'master-account'
   | 'master-license'
   | 'master-vendor'
-  | 'master-job-family';
+  | 'master-job-family'
+  | 'master-position'
+  | 'master-area';
 
 const HOME: Route = 'license-expiring';
 
@@ -70,6 +74,12 @@ function App() {
   }
   if (route === 'master-job-family') {
     return <MasterJobFamilyPage currentRoute={route} onNavigate={setRoute} />;
+  }
+  if (route === 'master-position') {
+    return <MasterPositionPage currentRoute={route} onNavigate={setRoute} />;
+  }
+  if (route === 'master-area') {
+    return <MasterAreaPage currentRoute={route} onNavigate={setRoute} />;
   }
   if (route === 'license-resume') {
     return <LicenseResumePage currentRoute={route} onNavigate={setRoute} />;

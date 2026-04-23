@@ -1,36 +1,34 @@
 import { useEffect, useState } from 'react';
 import Modal from './Modal';
-import { insertJobFamily, updateJobFamily, type JobFamily } from '../lib/job-families-data';
+import { insertArea, updateArea, type Area } from '../lib/areas-data';
 
 type Props = {
   open: boolean;
   onClose: () => void;
-  jobFamily: JobFamily | null;
-  onSaved?: (item: JobFamily) => void;
+  area: Area | null;
+  onSaved?: (item: Area) => void;
   nextNo?: number;
 };
 
-export default function JobFamilyEditModal({ open, onClose, jobFamily, onSaved, nextNo = 1 }: Props) {
-  const isNew = jobFamily === null;
+export default function AreaEditModal({ open, onClose, area, onSaved, nextNo = 1 }: Props) {
+  const isNew = area === null;
   const [code, setCode] = useState('');
   const [name, setName] = useState('');
-  const [nameAlign, setNameAlign] = useState('');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (open) {
-      setCode(jobFamily?.code ?? '');
-      setName(jobFamily?.name ?? '');
-      setNameAlign(jobFamily?.nameAlign ?? '');
+      setCode(area?.code ?? '');
+      setName(area?.name ?? '');
       setError(null);
       setSaving(false);
     }
-  }, [open, jobFamily]);
+  }, [open, area]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!code.trim() || !name.trim() || !nameAlign.trim()) {
+    if (!code.trim() || !name.trim()) {
       setError('Semua field wajib diisi.');
       return;
     }
@@ -38,11 +36,11 @@ export default function JobFamilyEditModal({ open, onClose, jobFamily, onSaved, 
     setError(null);
     try {
       if (isNew) {
-        const created = await insertJobFamily({ code, name, nameAlign }, nextNo);
+        const created = await insertArea({ code, name }, nextNo);
         onSaved?.(created);
-      } else if (jobFamily) {
-        await updateJobFamily(jobFamily.code, { code, name, nameAlign });
-        onSaved?.({ ...jobFamily, code, name, nameAlign });
+      } else if (area) {
+        await updateArea(area.code, { code, name });
+        onSaved?.({ ...area, code, name });
       }
       onClose();
     } catch (err) {
@@ -56,14 +54,13 @@ export default function JobFamilyEditModal({ open, onClose, jobFamily, onSaved, 
     <Modal
       open={open}
       onClose={onClose}
-      title={isNew ? 'Add Job Family' : 'Edit Job Family'}
+      title={isNew ? 'Add Area' : 'Edit Area'}
       size="md"
     >
       <form onSubmit={handleSubmit}>
         <div className="px-6 py-5 space-y-4">
-          <Field label="Code Job Family" value={code} onChange={setCode} placeholder="JFM-00000" />
-          <Field label="Name Job Family" value={name} onChange={setName} />
-          <Field label="Name Job Family Align" value={nameAlign} onChange={setNameAlign} />
+          <Field label="Kode Area" value={code} onChange={setCode} placeholder="AREA-00000" />
+          <Field label="Area" value={name} onChange={setName} />
           {error && (
             <p className="text-xs text-rose-600 bg-rose-50 border border-rose-100 rounded px-3 py-2">
               {error}
@@ -84,7 +81,7 @@ export default function JobFamilyEditModal({ open, onClose, jobFamily, onSaved, 
             disabled={saving}
             className="px-4 py-2 text-xs font-medium text-white bg-teal-500 rounded-md hover:bg-teal-600 disabled:opacity-60"
           >
-            {saving ? 'Saving…' : isNew ? 'Create Job Family' : 'Save Changes'}
+            {saving ? 'Saving…' : isNew ? 'Create Area' : 'Save Changes'}
           </button>
         </div>
       </form>

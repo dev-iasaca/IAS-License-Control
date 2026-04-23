@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { ArrowUpDown, Download, Plus, Upload } from 'lucide-react';
 import AppLayout from '../components/AppLayout';
 import PageHeader from '../components/PageHeader';
@@ -6,7 +6,8 @@ import { ActionBtn, Card } from '../components/shared';
 import ActionMenu from '../components/ActionMenu';
 import VendorDetailModal from '../components/VendorDetailModal';
 import VendorEditModal from '../components/VendorEditModal';
-import { VENDORS, type Vendor } from '../lib/vendors-data';
+import { deleteVendor, fetchVendors, type Vendor } from '../lib/vendors-data';
+import { exportToXlsx, type ExportColumn } from '../lib/export-excel';
 import type { Route } from '../App';
 
 type Props = { currentRoute: Route; onNavigate: (r: Route) => void };
@@ -14,9 +15,26 @@ type Props = { currentRoute: Route; onNavigate: (r: Route) => void };
 const HEADERS = ['#', 'Nama Vendor', 'Alamat', 'Nomor Telfon', 'Email', 'Action'];
 
 export default function MasterVendorPage({ currentRoute, onNavigate }: Props) {
+  const [items, setItems] = useState<Vendor[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [viewing, setViewing] = useState<Vendor | null>(null);
   const [editing, setEditing] = useState<Vendor | null>(null);
   const [editOpen, setEditOpen] = useState(false);
+
+  useEffect(() => {
+    (async () => {
+      setLoading(true);
+      setLoadError(null);
+      try {
+        setItems(await fetchVendors());
+      } catch (e) {
+        setLoadError(e instanceof Error ? e.message : String(e));
+      } finally {
+        setLoading(false);
+      }
+    })();
+  }, []);
 
   const openEdit = (v: Vendor | null) => {
     setEditing(v);
@@ -25,6 +43,61 @@ export default function MasterVendorPage({ currentRoute, onNavigate }: Props) {
   const closeEdit = () => {
     setEditOpen(false);
     setEditing(null);
+  };
+  const handleSaved = (item: Vendor) =>
+    setItems((prev) => {
+      const idx = prev.findIndex((x) => x.no === item.no);
+      if (idx === -1) return [...prev, item];
+      const next = [...prev];
+      next[idx] = item;
+      return next;
+    });
+
+  const handleDelete = async (v: Vendor) => {
+    if (!window.confirm(`Hapus vendor "${v.name}"? Semua training dari vendor ini juga ikut terhapus.`)) return;
+    try {
+      await deleteVendor(v.name);
+      setItems((prev) => prev.filter((x) => x.name !== v.name));
+    } catch (err) {
+      window.alert(err instanceof Error ? err.message : 'Gagal menghapus vendor.');
+    }
+  };
+
+  const handleExport = () => {
+    type Row = {
+      no: number; name: string; address: string; phone: string; email: string;
+      trainingName?: string; trainingType?: string; trainingLocation?: string; estimatedCost?: string;
+    };
+    const rows: Row[] = [];
+    for (const v of items) {
+      if (v.trainings.length === 0) {
+        rows.push({ no: v.no, name: v.name, address: v.address, phone: v.phone, email: v.email });
+      } else {
+        v.trainings.forEach((t, i) => rows.push({
+          no: v.no,
+          name: i === 0 ? v.name : '',
+          address: i === 0 ? v.address : '',
+          phone: i === 0 ? v.phone : '',
+          email: i === 0 ? v.email : '',
+          trainingName: t.name,
+          trainingType: t.type,
+          trainingLocation: t.location,
+          estimatedCost: t.estimatedCost,
+        }));
+      }
+    }
+    const columns: ExportColumn<Row>[] = [
+      { header: 'No', get: (r) => r.no },
+      { header: 'Nama Vendor', get: (r) => r.name },
+      { header: 'Alamat', get: (r) => r.address },
+      { header: 'Nomor Telfon', get: (r) => r.phone },
+      { header: 'Email', get: (r) => r.email },
+      { header: 'Training', get: (r) => r.trainingName },
+      { header: 'Training Type', get: (r) => r.trainingType },
+      { header: 'Training Location', get: (r) => r.trainingLocation },
+      { header: 'Estimated Cost', get: (r) => r.estimatedCost },
+    ];
+    exportToXlsx({ fileName: `master-vendor-${new Date().toISOString().slice(0, 10)}`, sheetName: 'Vendors', columns, rows });
   };
 
   return (
@@ -35,7 +108,7 @@ export default function MasterVendorPage({ currentRoute, onNavigate }: Props) {
         actions={
           <>
             <ActionBtn icon={Upload} color="teal">Import</ActionBtn>
-            <ActionBtn icon={Download} color="emerald">Export Excel</ActionBtn>
+            <ActionBtn icon={Download} color="emerald" onClick={handleExport}>Export Excel</ActionBtn>
             <button
               type="button"
               onClick={() => openEdit(null)}
@@ -83,7 +156,16 @@ export default function MasterVendorPage({ currentRoute, onNavigate }: Props) {
                 </tr>
               </thead>
               <tbody>
-                {VENDORS.map((v) => (
+                {loading && (
+                  <tr><td colSpan={HEADERS.length} className="py-6 text-center text-gray-400">Loading...</td></tr>
+                )}
+                {!loading && loadError && (
+                  <tr><td colSpan={HEADERS.length} className="py-6 text-center text-rose-500">{loadError}</td></tr>
+                )}
+                {!loading && !loadError && items.length === 0 && (
+                  <tr><td colSpan={HEADERS.length} className="py-6 text-center text-gray-400">No data</td></tr>
+                )}
+                {!loading && !loadError && items.map((v) => (
                   <tr key={v.no} className="border-b border-gray-50 hover:bg-gray-50/60">
                     <td className="py-3 px-3 text-gray-500">{v.no}</td>
                     <td className="py-3 px-3 font-medium text-gray-800">{v.name}</td>
@@ -94,7 +176,7 @@ export default function MasterVendorPage({ currentRoute, onNavigate }: Props) {
                       <ActionMenu
                         onView={() => setViewing(v)}
                         onEdit={() => openEdit(v)}
-                        onDelete={() => undefined}
+                        onDelete={() => void handleDelete(v)}
                       />
                     </td>
                   </tr>
@@ -104,7 +186,7 @@ export default function MasterVendorPage({ currentRoute, onNavigate }: Props) {
           </div>
 
           <div className="flex items-center justify-between mt-4 text-xs text-gray-500 flex-wrap gap-3">
-            <span>Showing 1 to {VENDORS.length} of {VENDORS.length} entries</span>
+            <span>Showing 1 to {items.length} of {items.length} entries</span>
             <div className="flex items-center gap-1">
               <button className="px-2.5 py-1 border border-gray-200 rounded text-gray-400">Previous</button>
               <button className="px-2.5 py-1 bg-teal-500 text-white rounded">1</button>
@@ -115,7 +197,13 @@ export default function MasterVendorPage({ currentRoute, onNavigate }: Props) {
       </div>
 
       <VendorDetailModal open={viewing !== null} onClose={() => setViewing(null)} vendor={viewing} />
-      <VendorEditModal open={editOpen} onClose={closeEdit} vendor={editing} />
+      <VendorEditModal
+        open={editOpen}
+        onClose={closeEdit}
+        vendor={editing}
+        onSaved={handleSaved}
+        nextNo={items.length + 1}
+      />
     </AppLayout>
   );
 }

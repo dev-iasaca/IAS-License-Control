@@ -1,14 +1,15 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { AlertTriangle, ArrowUpDown, CalendarClock, CheckCircle2, Clock } from 'lucide-react';
 import AppLayout from '../components/AppLayout';
 import PageHeader from '../components/PageHeader';
 import { Badge, Card } from '../components/shared';
 import {
-  EXPIRING_LICENSES,
   LICENSE_STATUSES,
   LICENSE_STATUS_COLOR,
+  fetchExpiringLicenses,
   monthsBadgeColor,
   monthsLabel,
+  updateAssignmentStatus,
   type ExpiringLicense,
   type LicenseStatus,
 } from '../lib/license-expiring-data';
@@ -19,12 +20,32 @@ type Props = { currentRoute: Route; onNavigate: (r: Route) => void };
 const HEADERS = ['#', 'NIK', 'Employee Name', 'License Name', 'Instansi', 'End Date', 'Bulan Tersisa', 'Status'];
 
 export default function LicenseExpiringPage({ currentRoute, onNavigate }: Props) {
-  const [rows, setRows] = useState<ExpiringLicense[]>(EXPIRING_LICENSES);
+  const [rows, setRows] = useState<ExpiringLicense[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [filterStatus, setFilterStatus] = useState<LicenseStatus | 'All'>('All');
   const [filterRange, setFilterRange] = useState<'all' | '1' | '3' | '6'>('all');
 
-  const updateStatus = (no: number, status: LicenseStatus) => {
-    setRows((prev) => prev.map((r) => (r.no === no ? { ...r, status } : r)));
+  useEffect(() => {
+    let active = true;
+    setLoading(true);
+    setLoadError(null);
+    fetchExpiringLicenses()
+      .then((data) => { if (active) setRows(data); })
+      .catch((err) => { if (active) setLoadError(err instanceof Error ? err.message : String(err)); })
+      .finally(() => { if (active) setLoading(false); });
+    return () => { active = false; };
+  }, []);
+
+  const updateStatus = async (id: number, status: LicenseStatus) => {
+    const prev = rows;
+    setRows((rs) => rs.map((r) => (r.id === id ? { ...r, status } : r)));
+    try {
+      await updateAssignmentStatus(id, status);
+    } catch (err) {
+      setRows(prev);
+      window.alert(`Gagal memperbarui status: ${err instanceof Error ? err.message : String(err)}`);
+    }
   };
 
   const stats = useMemo(() => {
@@ -111,8 +132,22 @@ export default function LicenseExpiringPage({ currentRoute, onNavigate }: Props)
                 </tr>
               </thead>
               <tbody>
-                {filtered.map((l) => (
-                  <tr key={l.no} className="border-b border-gray-50 hover:bg-gray-50/60">
+                {loading && (
+                  <tr>
+                    <td colSpan={HEADERS.length} className="py-6 text-center text-gray-400">
+                      Memuat data…
+                    </td>
+                  </tr>
+                )}
+                {!loading && loadError && (
+                  <tr>
+                    <td colSpan={HEADERS.length} className="py-6 text-center text-rose-500">
+                      {loadError}
+                    </td>
+                  </tr>
+                )}
+                {!loading && !loadError && filtered.map((l) => (
+                  <tr key={l.id} className="border-b border-gray-50 hover:bg-gray-50/60">
                     <td className="py-3 px-3 text-gray-500">{l.no}</td>
                     <td className="py-3 px-3 font-medium text-gray-800">{l.nik}</td>
                     <td className="py-3 px-3 text-gray-700">{l.name}</td>
@@ -127,12 +162,12 @@ export default function LicenseExpiringPage({ currentRoute, onNavigate }: Props)
                     <td className="py-3 px-3">
                       <StatusSelect
                         value={l.status}
-                        onChange={(s) => updateStatus(l.no, s)}
+                        onChange={(s) => void updateStatus(l.id, s)}
                       />
                     </td>
                   </tr>
                 ))}
-                {filtered.length === 0 && (
+                {!loading && !loadError && filtered.length === 0 && (
                   <tr>
                     <td colSpan={HEADERS.length} className="py-6 text-center text-gray-400">
                       Tidak ada data yang sesuai dengan filter.

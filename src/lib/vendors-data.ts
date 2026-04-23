@@ -1,3 +1,5 @@
+import { supabase } from './supabase';
+
 export type Training = {
   name: string;
   type: string;
@@ -13,6 +15,117 @@ export type Vendor = {
   email: string;
   trainings: Training[];
 };
+
+export type NewVendor = Omit<Vendor, 'no'>;
+
+type VendorRow = {
+  id: number;
+  name: string;
+  address: string | null;
+  phone: string | null;
+  email: string | null;
+  trainings: Array<{
+    name: string;
+    type: string | null;
+    location: string | null;
+    estimated_cost: string | null;
+  }> | null;
+};
+
+export async function fetchVendors(): Promise<Vendor[]> {
+  const { data, error } = await supabase
+    .from('vendors')
+    .select('id, name, address, phone, email, trainings:vendor_trainings(name, type, location, estimated_cost)')
+    .order('id', { ascending: true })
+    .returns<VendorRow[]>();
+  if (error) throw new Error(error.message);
+  return (data ?? []).map((row, idx) => ({
+    no: idx + 1,
+    name: row.name ?? '',
+    address: row.address ?? '',
+    phone: row.phone ?? '',
+    email: row.email ?? '',
+    trainings: (row.trainings ?? []).map((t) => ({
+      name: t.name ?? '',
+      type: t.type ?? '',
+      location: t.location ?? '',
+      estimatedCost: t.estimated_cost ?? '',
+    })),
+  }));
+}
+
+export async function insertVendor(input: NewVendor, nextNo: number): Promise<Vendor> {
+  const { data: vendor, error } = await supabase
+    .from('vendors')
+    .insert({
+      name: input.name,
+      address: input.address || null,
+      phone: input.phone || null,
+      email: input.email || null,
+    })
+    .select('id')
+    .single();
+  if (error || !vendor) throw new Error(error?.message ?? 'Gagal menyimpan vendor.');
+
+  if (input.trainings.length > 0) {
+    const rows = input.trainings.map((t) => ({
+      vendor_id: vendor.id,
+      name: t.name,
+      type: t.type || null,
+      location: t.location || null,
+      estimated_cost: t.estimatedCost || null,
+    }));
+    const { error: trErr } = await supabase.from('vendor_trainings').insert(rows);
+    if (trErr) throw new Error(trErr.message);
+  }
+
+  return { no: nextNo, ...input };
+}
+
+export async function updateVendor(originalName: string, input: NewVendor): Promise<void> {
+  const { data: existing, error: lookupErr } = await supabase
+    .from('vendors')
+    .select('id')
+    .eq('name', originalName)
+    .maybeSingle();
+  if (lookupErr) throw new Error(lookupErr.message);
+  if (!existing) throw new Error(`Vendor "${originalName}" tidak ditemukan di database.`);
+  const vendorId = existing.id as number;
+
+  const { error } = await supabase
+    .from('vendors')
+    .update({
+      name: input.name,
+      address: input.address || null,
+      phone: input.phone || null,
+      email: input.email || null,
+    })
+    .eq('id', vendorId);
+  if (error) throw new Error(error.message);
+
+  const { error: delErr } = await supabase
+    .from('vendor_trainings')
+    .delete()
+    .eq('vendor_id', vendorId);
+  if (delErr) throw new Error(delErr.message);
+
+  if (input.trainings.length > 0) {
+    const rows = input.trainings.map((t) => ({
+      vendor_id: vendorId,
+      name: t.name,
+      type: t.type || null,
+      location: t.location || null,
+      estimated_cost: t.estimatedCost || null,
+    }));
+    const { error: trErr } = await supabase.from('vendor_trainings').insert(rows);
+    if (trErr) throw new Error(trErr.message);
+  }
+}
+
+export async function deleteVendor(name: string): Promise<void> {
+  const { error } = await supabase.from('vendors').delete().eq('name', name);
+  if (error) throw new Error(error.message);
+}
 
 export const VENDORS: Vendor[] = [
   {

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { ArrowUpDown, Download, Plus, Upload } from 'lucide-react';
 import AppLayout from '../components/AppLayout';
 import PageHeader from '../components/PageHeader';
@@ -6,7 +6,8 @@ import { ActionBtn, Badge, Card, FilterInput, type AccentColor } from '../compon
 import ActionMenu from '../components/ActionMenu';
 import AccountDetailModal from '../components/AccountDetailModal';
 import AccountEditModal from '../components/AccountEditModal';
-import { ACCOUNTS, type Account, type AccountStatus } from '../lib/accounts-data';
+import { deleteAccount, fetchAccounts, type Account, type AccountStatus } from '../lib/accounts-data';
+import { exportToXlsx, type ExportColumn } from '../lib/export-excel';
 import type { Route } from '../App';
 
 type Props = { currentRoute: Route; onNavigate: (r: Route) => void };
@@ -30,9 +31,26 @@ const HEADERS = [
 ];
 
 export default function MasterAccountPage({ currentRoute, onNavigate }: Props) {
+  const [items, setItems] = useState<Account[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [viewing, setViewing] = useState<Account | null>(null);
   const [editing, setEditing] = useState<Account | null>(null);
   const [editOpen, setEditOpen] = useState(false);
+
+  useEffect(() => {
+    (async () => {
+      setLoading(true);
+      setLoadError(null);
+      try {
+        setItems(await fetchAccounts());
+      } catch (e) {
+        setLoadError(e instanceof Error ? e.message : String(e));
+      } finally {
+        setLoading(false);
+      }
+    })();
+  }, []);
 
   const openEdit = (a: Account | null) => {
     setEditing(a);
@@ -41,6 +59,39 @@ export default function MasterAccountPage({ currentRoute, onNavigate }: Props) {
   const closeEdit = () => {
     setEditOpen(false);
     setEditing(null);
+  };
+  const handleSaved = (item: Account) =>
+    setItems((prev) => {
+      const idx = prev.findIndex((x) => x.no === item.no);
+      if (idx === -1) return [...prev, item];
+      const next = [...prev];
+      next[idx] = item;
+      return next;
+    });
+
+  const handleDelete = async (a: Account) => {
+    if (!window.confirm(`Hapus account "${a.username}"?`)) return;
+    try {
+      await deleteAccount(a.username);
+      setItems((prev) => prev.filter((x) => x.username !== a.username));
+    } catch (err) {
+      window.alert(err instanceof Error ? err.message : 'Gagal menghapus account.');
+    }
+  };
+
+  const handleExport = () => {
+    const columns: ExportColumn<Account>[] = [
+      { header: 'No', get: (r) => r.no },
+      { header: 'Username', get: (r) => r.username },
+      { header: 'NIK', get: (r) => r.nik },
+      { header: 'Full Name', get: (r) => r.name },
+      { header: 'Email', get: (r) => r.email },
+      { header: 'Role', get: (r) => r.role },
+      { header: 'Organization', get: (r) => r.org },
+      { header: 'Status', get: (r) => r.status },
+      { header: 'Last Login', get: (r) => r.lastLogin },
+    ];
+    exportToXlsx({ fileName: `master-account-${new Date().toISOString().slice(0, 10)}`, sheetName: 'Accounts', columns, rows: items });
   };
 
   return (
@@ -51,7 +102,7 @@ export default function MasterAccountPage({ currentRoute, onNavigate }: Props) {
         actions={
           <>
             <ActionBtn icon={Upload} color="teal">Import</ActionBtn>
-            <ActionBtn icon={Download} color="emerald">Export Excel</ActionBtn>
+            <ActionBtn icon={Download} color="emerald" onClick={handleExport}>Export Excel</ActionBtn>
             <button
               type="button"
               onClick={() => openEdit(null)}
@@ -107,7 +158,16 @@ export default function MasterAccountPage({ currentRoute, onNavigate }: Props) {
                 </tr>
               </thead>
               <tbody>
-                {ACCOUNTS.map((a) => (
+                {loading && (
+                  <tr><td colSpan={HEADERS.length} className="py-6 text-center text-gray-400">Loading...</td></tr>
+                )}
+                {!loading && loadError && (
+                  <tr><td colSpan={HEADERS.length} className="py-6 text-center text-rose-500">{loadError}</td></tr>
+                )}
+                {!loading && !loadError && items.length === 0 && (
+                  <tr><td colSpan={HEADERS.length} className="py-6 text-center text-gray-400">No data</td></tr>
+                )}
+                {!loading && !loadError && items.map((a) => (
                   <tr key={a.username} className="border-b border-gray-50 hover:bg-gray-50/60">
                     <td className="py-3 px-3 text-gray-500">{a.no}</td>
                     <td className="py-3 px-3 font-medium text-gray-800">{a.username}</td>
@@ -122,7 +182,7 @@ export default function MasterAccountPage({ currentRoute, onNavigate }: Props) {
                       <ActionMenu
                         onView={() => setViewing(a)}
                         onEdit={() => openEdit(a)}
-                        onDelete={() => undefined}
+                        onDelete={() => void handleDelete(a)}
                       />
                     </td>
                   </tr>
@@ -132,7 +192,7 @@ export default function MasterAccountPage({ currentRoute, onNavigate }: Props) {
           </div>
 
           <div className="flex items-center justify-between mt-4 text-xs text-gray-500 flex-wrap gap-3">
-            <span>Showing 1 to {ACCOUNTS.length} of {ACCOUNTS.length} entries</span>
+            <span>Showing 1 to {items.length} of {items.length} entries</span>
             <div className="flex items-center gap-1">
               <button className="px-2.5 py-1 border border-gray-200 rounded text-gray-400">Previous</button>
               <button className="px-2.5 py-1 bg-teal-500 text-white rounded">1</button>
@@ -143,7 +203,13 @@ export default function MasterAccountPage({ currentRoute, onNavigate }: Props) {
       </div>
 
       <AccountDetailModal open={viewing !== null} onClose={() => setViewing(null)} account={viewing} />
-      <AccountEditModal open={editOpen} onClose={closeEdit} account={editing} />
+      <AccountEditModal
+        open={editOpen}
+        onClose={closeEdit}
+        account={editing}
+        onSaved={handleSaved}
+        nextNo={items.length + 1}
+      />
     </AppLayout>
   );
 }
