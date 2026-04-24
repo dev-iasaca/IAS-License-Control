@@ -30,18 +30,20 @@ export default function MasterJobFamilyPage({ currentRoute, onNavigate }: Props)
     });
   }, [items, search]);
 
+  const loadData = async () => {
+    setLoading(true);
+    setLoadError(null);
+    try {
+      setItems(await fetchJobFamilies());
+    } catch (e) {
+      setLoadError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
-    (async () => {
-      setLoading(true);
-      setLoadError(null);
-      try {
-        setItems(await fetchJobFamilies());
-      } catch (e) {
-        setLoadError(e instanceof Error ? e.message : String(e));
-      } finally {
-        setLoading(false);
-      }
-    })();
+    void loadData();
   }, []);
 
   const openEdit = (j: JobFamily | null) => {
@@ -52,21 +54,15 @@ export default function MasterJobFamilyPage({ currentRoute, onNavigate }: Props)
     setEditOpen(false);
     setEditing(null);
   };
-  const handleSaved = (item: JobFamily) => {
-    setItems((prev) => {
-      const idx = prev.findIndex((x) => x.no === item.no);
-      if (idx === -1) return [...prev, item];
-      const next = [...prev];
-      next[idx] = item;
-      return next;
-    });
+  const handleSaved = () => {
+    void loadData();
   };
 
   const handleDelete = async (j: JobFamily) => {
     if (!window.confirm(`Hapus job family "${j.name}" (${j.code})?`)) return;
     try {
       await deleteJobFamily(j.code);
-      setItems((prev) => prev.filter((x) => x.code !== j.code));
+      await loadData();
     } catch (err) {
       window.alert(err instanceof Error ? err.message : 'Gagal menghapus job family.');
     }
