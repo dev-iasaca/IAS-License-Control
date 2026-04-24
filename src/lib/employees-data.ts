@@ -123,12 +123,26 @@ export async function fetchEmployees(): Promise<Employee[]> {
   }));
 }
 
+async function lookupPositionId(title: string | undefined | null): Promise<number | null> {
+  if (!title || !title.trim()) return null;
+  const { data, error } = await supabase
+    .from('positions')
+    .select('id')
+    .eq('position_title', title)
+    .limit(1)
+    .maybeSingle();
+  if (error || !data) return null;
+  return (data as { id: number }).id;
+}
+
 export async function insertEmployee(input: NewEmployee, nextNo: number): Promise<Employee> {
+  const positionId = await lookupPositionId(input.position);
   const payload = {
     nik: input.id,
     name: input.name,
     organization: input.organization || null,
     position: input.position || null,
+    position_id: positionId,
     area: input.area || null,
     type: input.type || null,
     group_name: input.group || null,
@@ -153,11 +167,13 @@ export async function insertEmployee(input: NewEmployee, nextNo: number): Promis
 }
 
 export async function updateEmployee(originalNik: string, input: NewEmployee): Promise<void> {
+  const positionId = await lookupPositionId(input.position);
   const payload = {
     nik: input.id,
     name: input.name,
     organization: input.organization || null,
     position: input.position || null,
+    position_id: positionId,
     area: input.area || null,
     type: input.type || null,
     group_name: input.group || null,
