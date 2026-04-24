@@ -25,12 +25,13 @@ type LicenseAssignmentRow = {
   employee: { nik: string | null; name: string | null } | null;
   license: { name: string | null; issuer: string | null } | null;
   job_family: { name: string | null } | null;
+  vendor: { name: string | null } | null;
 };
 
 export async function fetchLicenses(): Promise<License[]> {
   const { data, error } = await supabase
     .from('license_assignments')
-    .select('id, license_number, start_date, end_date, organization, employee:employees(nik, name), license:licenses(name, issuer), job_family:job_families(name)')
+    .select('id, license_number, start_date, end_date, organization, employee:employees(nik, name), license:licenses(name, issuer), job_family:job_families(name), vendor:vendors(name)')
     .order('id', { ascending: true })
     .returns<LicenseAssignmentRow[]>();
   if (error) throw new Error(error.message);
@@ -40,7 +41,7 @@ export async function fetchLicenses(): Promise<License[]> {
     name: row.employee?.name ?? '',
     licenseNumber: row.license_number ?? undefined,
     licenseName: row.license?.name ?? '',
-    instansi: row.license?.issuer ?? undefined,
+    instansi: row.vendor?.name ?? row.license?.issuer ?? undefined,
     startDate: row.start_date ?? '',
     endDate: row.end_date ?? '',
     jobFamily: row.job_family?.name ?? undefined,
@@ -52,6 +53,18 @@ async function lookupJobFamilyId(name: string | undefined | null): Promise<numbe
   if (!name || !name.trim()) return null;
   const { data, error } = await supabase
     .from('job_families')
+    .select('id')
+    .eq('name', name.trim())
+    .limit(1)
+    .maybeSingle();
+  if (error || !data) return null;
+  return (data as { id: number }).id;
+}
+
+async function lookupVendorId(name: string | undefined | null): Promise<number | null> {
+  if (!name || !name.trim()) return null;
+  const { data, error } = await supabase
+    .from('vendors')
     .select('id')
     .eq('name', name.trim())
     .limit(1)
@@ -107,6 +120,7 @@ export async function insertLicense(input: NewLicense, nextNo: number): Promise<
   }
 
   const jobFamilyId = await lookupJobFamilyId(input.jobFamily);
+  const vendorId = await lookupVendorId(input.instansi);
 
   const { error: assignErr } = await supabase.from('license_assignments').insert({
     employee_id: emp.id,
@@ -117,6 +131,7 @@ export async function insertLicense(input: NewLicense, nextNo: number): Promise<
     status: 'Pengajuan',
     organization: input.organization || null,
     job_family_id: jobFamilyId,
+    vendor_id: vendorId,
   });
   if (assignErr) throw new Error(assignErr.message);
 
@@ -190,6 +205,7 @@ export async function updateLicense(original: License, input: NewLicense): Promi
   }
 
   const jobFamilyId = await lookupJobFamilyId(input.jobFamily);
+  const vendorId = await lookupVendorId(input.instansi);
 
   const { error: updErr } = await supabase
     .from('license_assignments')
@@ -201,6 +217,7 @@ export async function updateLicense(original: License, input: NewLicense): Promi
       end_date: input.endDate || null,
       organization: input.organization || null,
       job_family_id: jobFamilyId,
+      vendor_id: vendorId,
     })
     .eq('id', origAssign.id);
   if (updErr) throw new Error(updErr.message);

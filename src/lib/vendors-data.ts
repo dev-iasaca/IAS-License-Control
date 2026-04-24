@@ -9,6 +9,7 @@ export type Training = {
 
 export type Vendor = {
   no: number;
+  id: number;
   name: string;
   address: string;
   phone: string;
@@ -16,7 +17,7 @@ export type Vendor = {
   trainings: Training[];
 };
 
-export type NewVendor = Omit<Vendor, 'no'>;
+export type NewVendor = Omit<Vendor, 'no' | 'id'>;
 
 type VendorRow = {
   id: number;
@@ -41,6 +42,7 @@ export async function fetchVendors(): Promise<Vendor[]> {
   if (error) throw new Error(error.message);
   return (data ?? []).map((row, idx) => ({
     no: idx + 1,
+    id: (row.id as number) ?? 0,
     name: row.name ?? '',
     address: row.address ?? '',
     phone: row.phone ?? '',
@@ -139,6 +141,7 @@ export async function deleteVendor(name: string): Promise<void> {
 export const VENDORS: Vendor[] = [
   {
     no: 1,
+    id: 1,
     name: 'PT Atma Jaya Training Center',
     address: 'Jl. Jenderal Sudirman No. 51, Jakarta Pusat',
     phone: '021-5708826',
@@ -151,6 +154,7 @@ export const VENDORS: Vendor[] = [
   },
   {
     no: 2,
+    id: 2,
     name: 'Badan Nasional Sertifikasi Profesi (BNSP)',
     address: 'Jl. MT Haryono Kav. 52, Jakarta Selatan',
     phone: '021-7901106',
@@ -163,6 +167,7 @@ export const VENDORS: Vendor[] = [
   },
   {
     no: 3,
+    id: 3,
     name: 'PT Mutiara Mutu Katiga',
     address: 'Jl. Gatot Subroto No. 88, Jakarta Selatan',
     phone: '021-5223344',
@@ -174,6 +179,7 @@ export const VENDORS: Vendor[] = [
   },
   {
     no: 4,
+    id: 4,
     name: 'Forum TJSL BUMN',
     address: 'Gedung BUMN Lt. 5, Jl. Medan Merdeka Selatan No. 13, Jakarta',
     phone: '021-2900788',
@@ -185,6 +191,7 @@ export const VENDORS: Vendor[] = [
   },
   {
     no: 5,
+    id: 5,
     name: 'Kementerian Ketenagakerjaan RI',
     address: 'Jl. Jenderal Gatot Subroto Kav. 51, Jakarta Selatan',
     phone: '021-5255733',
@@ -196,6 +203,7 @@ export const VENDORS: Vendor[] = [
   },
   {
     no: 6,
+    id: 6,
     name: 'PT Garuda Aviation Training',
     address: 'Soekarno-Hatta Airport Area, Tangerang',
     phone: '021-5591234',
@@ -208,6 +216,7 @@ export const VENDORS: Vendor[] = [
   },
   {
     no: 7,
+    id: 7,
     name: 'PT Sertifikasi Kompetensi Indonesia',
     address: 'Jl. Thamrin No. 10, Jakarta Pusat',
     phone: '021-3904567',

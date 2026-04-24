@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import Modal from './Modal';
 import { fetchEmployeeNameByNik, insertLicense, updateLicense, type License } from '../lib/licenses-data';
 import { fetchJobFamilies, type JobFamily } from '../lib/job-families-data';
+import { fetchVendors, type Vendor } from '../lib/vendors-data';
 
 type Props = {
   open: boolean;
@@ -32,12 +33,15 @@ export default function LicenseEditModal({ open, onClose, license, onSaved, next
   const [nikLookup, setNikLookup] = useState<'idle' | 'loading' | 'found' | 'not-found'>('idle');
   const lookupTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [jobFamilies, setJobFamilies] = useState<JobFamily[]>([]);
+  const [vendors, setVendors] = useState<Vendor[]>([]);
 
   useEffect(() => {
     if (!open) return;
     (async () => {
       try {
-        setJobFamilies(await fetchJobFamilies());
+        const [jf, vs] = await Promise.all([fetchJobFamilies(), fetchVendors()]);
+        setJobFamilies(jf);
+        setVendors(vs);
       } catch {
         /* silent — select will fall back to current value */
       }
@@ -148,7 +152,13 @@ export default function LicenseEditModal({ open, onClose, license, onSaved, next
           <Field label="Organization" value={form.organization} onChange={(v) => update({ organization: v })} />
           <Field label="Nomor License" value={form.licenseNumber} onChange={(v) => update({ licenseNumber: v })} />
           <Field label="License Name" value={form.licenseName} onChange={(v) => update({ licenseName: v })} />
-          <Field label="Instansi" value={form.instansi} onChange={(v) => update({ instansi: v })} />
+          <Select
+            label="Instansi"
+            value={form.instansi}
+            onChange={(v) => update({ instansi: v })}
+            options={buildVendorOptions(form.instansi, vendors)}
+            placeholder="-Select Instansi-"
+          />
           <Field label="Negara" value={form.negara} onChange={(v) => update({ negara: v })} />
           <Select
             label="Job Family"
@@ -260,4 +270,11 @@ function buildJobFamilyOptions(current: string, list: JobFamily[]): string[] {
   if (current && !names.includes(current)) return [current, ...names];
   return names;
 }
+
+function buildVendorOptions(current: string, list: Vendor[]): string[] {
+  const names = list.map((v) => v.name).filter((n) => n.trim() !== '');
+  if (current && !names.includes(current)) return [current, ...names];
+  return names;
+}
+
 
