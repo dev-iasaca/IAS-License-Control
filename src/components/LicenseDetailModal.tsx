@@ -17,6 +17,7 @@ export default function LicenseDetailModal({ open, onClose, license }: Props) {
             <DetailRow label="NIK" value={license.nik} />
             <DetailRow label="Employee Name" value={license.name} />
             <DetailRow label="Organization" value={license.organization} />
+            <DetailRow label="Nomor License" value={license.licenseNumber} />
             <DetailRow label="License Name" value={license.licenseName} />
             <DetailRow label="Instansi" value={license.instansi} />
             <DetailRow label="Negara" value={license.negara} />

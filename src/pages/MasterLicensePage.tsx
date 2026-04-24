@@ -25,6 +25,7 @@ const HEADERS = [
   '#',
   'NIK',
   'Employee Name',
+  'Nomor License',
   'License Name',
   'Instansi',
   'Start Date',
@@ -47,7 +48,7 @@ export default function MasterLicensePage({ currentRoute, onNavigate }: Props) {
     const q = search.trim().toLowerCase();
     if (!q) return items;
     return items.filter((l) => {
-      const hay = [l.nik, l.name, l.licenseName, l.instansi, l.negara, l.jobFamily, l.organization, l.startDate, l.endDate]
+      const hay = [l.nik, l.name, l.licenseNumber, l.licenseName, l.instansi, l.negara, l.jobFamily, l.organization, l.startDate, l.endDate]
         .map((v) => String(v ?? '').toLowerCase()).join(' ');
       return hay.includes(q);
     });
@@ -101,6 +102,7 @@ export default function MasterLicensePage({ currentRoute, onNavigate }: Props) {
       { header: 'No', get: (r) => r.no },
       { header: 'NIK', get: (r) => r.nik },
       { header: 'Employee Name', get: (r) => r.name },
+      { header: 'Nomor License', get: (r) => r.licenseNumber },
       { header: 'License Name', get: (r) => r.licenseName },
       { header: 'Instansi', get: (r) => r.instansi },
       { header: 'Start Date', get: (r) => r.startDate },
@@ -191,6 +193,7 @@ export default function MasterLicensePage({ currentRoute, onNavigate }: Props) {
                     <td className="py-3 px-3 text-gray-500">{l.no}</td>
                     <td className="py-3 px-3 font-medium text-gray-800">{l.nik}</td>
                     <td className="py-3 px-3 text-gray-700">{l.name}</td>
+                    <td className="py-3 px-3 text-gray-600 whitespace-nowrap">{l.licenseNumber ?? '-'}</td>
                     <td className="py-3 px-3 text-teal-600 max-w-[260px]">{l.licenseName}</td>
                     <td className="py-3 px-3 text-gray-600">{l.instansi ?? '-'}</td>
                     <td className="py-3 px-3 text-gray-600 whitespace-nowrap">{l.startDate}</td>

@@ -4,6 +4,7 @@ export type License = {
   no: number;
   nik: string;
   name: string;
+  licenseNumber?: string;
   licenseName: string;
   instansi?: string;
   startDate: string;
@@ -17,6 +18,7 @@ export type NewLicense = Omit<License, 'no'>;
 
 type LicenseAssignmentRow = {
   id: number;
+  license_number: string | null;
   start_date: string | null;
   end_date: string | null;
   organization: string | null;
@@ -27,7 +29,7 @@ type LicenseAssignmentRow = {
 export async function fetchLicenses(): Promise<License[]> {
   const { data, error } = await supabase
     .from('license_assignments')
-    .select('id, start_date, end_date, organization, employee:employees(nik, name), license:licenses(name, issuer)')
+    .select('id, license_number, start_date, end_date, organization, employee:employees(nik, name), license:licenses(name, issuer)')
     .order('id', { ascending: true })
     .returns<LicenseAssignmentRow[]>();
   if (error) throw new Error(error.message);
@@ -35,12 +37,25 @@ export async function fetchLicenses(): Promise<License[]> {
     no: idx + 1,
     nik: row.employee?.nik ?? '',
     name: row.employee?.name ?? '',
+    licenseNumber: row.license_number ?? undefined,
     licenseName: row.license?.name ?? '',
     instansi: row.license?.issuer ?? undefined,
     startDate: row.start_date ?? '',
     endDate: row.end_date ?? '',
     organization: row.organization ?? '',
   }));
+}
+
+export async function fetchEmployeeNameByNik(nik: string): Promise<string | null> {
+  const trimmed = nik.trim();
+  if (!trimmed) return null;
+  const { data, error } = await supabase
+    .from('employees')
+    .select('name')
+    .eq('nik', trimmed)
+    .maybeSingle();
+  if (error) throw new Error(error.message);
+  return data?.name ?? null;
 }
 
 export async function insertLicense(input: NewLicense, nextNo: number): Promise<License> {
@@ -80,6 +95,7 @@ export async function insertLicense(input: NewLicense, nextNo: number): Promise<
   const { error: assignErr } = await supabase.from('license_assignments').insert({
     employee_id: emp.id,
     license_id: licenseId,
+    license_number: input.licenseNumber?.trim() || null,
     start_date: input.startDate || null,
     end_date: input.endDate || null,
     status: 'Pengajuan',
@@ -161,6 +177,7 @@ export async function updateLicense(original: License, input: NewLicense): Promi
     .update({
       employee_id: newEmp.id,
       license_id: newLicenseId,
+      license_number: input.licenseNumber?.trim() || null,
       start_date: input.startDate || null,
       end_date: input.endDate || null,
       organization: input.organization || null,

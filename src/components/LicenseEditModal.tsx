@@ -1,6 +1,6 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import Modal from './Modal';
-import { insertLicense, updateLicense, type License } from '../lib/licenses-data';
+import { fetchEmployeeNameByNik, insertLicense, updateLicense, type License } from '../lib/licenses-data';
 
 type Props = {
   open: boolean;
@@ -14,6 +14,7 @@ const EMPTY_FORM = {
   nik: '',
   name: '',
   organization: 'PT Integrasi Aviasi Solusi',
+  licenseNumber: '',
   licenseName: '',
   instansi: '',
   negara: '',
@@ -27,6 +28,8 @@ export default function LicenseEditModal({ open, onClose, license, onSaved, next
   const [form, setForm] = useState(EMPTY_FORM);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [nikLookup, setNikLookup] = useState<'idle' | 'loading' | 'found' | 'not-found'>('idle');
+  const lookupTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     if (open) {
@@ -34,6 +37,7 @@ export default function LicenseEditModal({ open, onClose, license, onSaved, next
         nik: license?.nik ?? '',
         name: license?.name ?? '',
         organization: license?.organization ?? 'PT Integrasi Aviasi Solusi',
+        licenseNumber: license?.licenseNumber ?? '',
         licenseName: license?.licenseName ?? '',
         instansi: license?.instansi ?? '',
         negara: license?.negara ?? '',
@@ -43,8 +47,37 @@ export default function LicenseEditModal({ open, onClose, license, onSaved, next
       });
       setError(null);
       setSaving(false);
+      setNikLookup(license?.name ? 'found' : 'idle');
     }
   }, [open, license]);
+
+  useEffect(() => {
+    if (!open) return;
+    if (lookupTimer.current) clearTimeout(lookupTimer.current);
+    const nik = form.nik.trim();
+    if (!nik) {
+      setNikLookup('idle');
+      return;
+    }
+    setNikLookup('loading');
+    lookupTimer.current = setTimeout(async () => {
+      try {
+        const name = await fetchEmployeeNameByNik(nik);
+        if (name) {
+          setForm((prev) => (prev.nik.trim() === nik ? { ...prev, name } : prev));
+          setNikLookup('found');
+        } else {
+          setForm((prev) => (prev.nik.trim() === nik ? { ...prev, name: '' } : prev));
+          setNikLookup('not-found');
+        }
+      } catch {
+        setNikLookup('idle');
+      }
+    }, 350);
+    return () => {
+      if (lookupTimer.current) clearTimeout(lookupTimer.current);
+    };
+  }, [form.nik, open]);
 
   const update = (patch: Partial<typeof form>) => setForm((prev) => ({ ...prev, ...patch }));
 
@@ -52,6 +85,10 @@ export default function LicenseEditModal({ open, onClose, license, onSaved, next
     e.preventDefault();
     if (!form.nik.trim() || !form.licenseName.trim()) {
       setError('NIK dan License Name wajib diisi.');
+      return;
+    }
+    if (nikLookup === 'not-found') {
+      setError('NIK tidak ditemukan di Master Employee. Tambahkan employee terlebih dahulu.');
       return;
     }
     setSaving(true);
@@ -81,9 +118,22 @@ export default function LicenseEditModal({ open, onClose, license, onSaved, next
     >
       <form onSubmit={handleSubmit}>
         <div className="px-6 py-5 max-h-[70vh] overflow-y-auto grid grid-cols-1 md:grid-cols-2 gap-4">
-          <Field label="NIK" value={form.nik} onChange={(v) => update({ nik: v })} />
-          <Field label="Employee Name" value={form.name} onChange={(v) => update({ name: v })} />
+          <Field
+            label="NIK"
+            value={form.nik}
+            onChange={(v) => update({ nik: v })}
+            hint={
+              nikLookup === 'loading'
+                ? 'Mencari karyawan...'
+                : nikLookup === 'not-found'
+                ? 'NIK tidak ditemukan di Master Employee'
+                : undefined
+            }
+            hintColor={nikLookup === 'not-found' ? 'rose' : 'gray'}
+          />
+          <Field label="Employee Name" value={form.name} onChange={() => undefined} readOnly />
           <Field label="Organization" value={form.organization} onChange={(v) => update({ organization: v })} />
+          <Field label="Nomor License" value={form.licenseNumber} onChange={(v) => update({ licenseNumber: v })} />
           <Field label="License Name" value={form.licenseName} onChange={(v) => update({ licenseName: v })} />
           <Field label="Instansi" value={form.instansi} onChange={(v) => update({ instansi: v })} />
           <Field label="Negara" value={form.negara} onChange={(v) => update({ negara: v })} />
@@ -123,11 +173,17 @@ function Field({
   value,
   onChange,
   type = 'text',
+  readOnly = false,
+  hint,
+  hintColor = 'gray',
 }: {
   label: string;
   value: string;
   onChange: (v: string) => void;
   type?: string;
+  readOnly?: boolean;
+  hint?: string;
+  hintColor?: 'gray' | 'rose';
 }) {
   return (
     <label className="flex flex-col gap-1 text-xs">
@@ -136,8 +192,14 @@ function Field({
         type={type}
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="border border-gray-200 rounded-md px-3 py-2 text-xs focus:outline-none focus:border-teal-400"
+        readOnly={readOnly}
+        className={`border border-gray-200 rounded-md px-3 py-2 text-xs focus:outline-none focus:border-teal-400 ${
+          readOnly ? 'bg-gray-50 text-gray-700 cursor-not-allowed' : ''
+        }`}
       />
+      {hint && (
+        <span className={hintColor === 'rose' ? 'text-rose-500' : 'text-gray-400'}>{hint}</span>
+      )}
     </label>
   );
 }
