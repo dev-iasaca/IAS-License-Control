@@ -17,7 +17,6 @@ const FILTERS: Array<{ label?: string; chip?: string }> = [
   { label: '-Select Job Family-' },
   { label: '-Select License Name-' },
   { label: '-Select Instansi-' },
-  { label: '-Select Negara-' },
   { label: '-Select Status-' },
 ];
 
@@ -30,7 +29,6 @@ const HEADERS = [
   'Instansi',
   'Start Date',
   'End Date',
-  'Negara',
   'Job Family',
   'Action',
 ];
@@ -48,7 +46,7 @@ export default function MasterLicensePage({ currentRoute, onNavigate }: Props) {
     const q = search.trim().toLowerCase();
     if (!q) return items;
     return items.filter((l) => {
-      const hay = [l.nik, l.name, l.licenseNumber, l.licenseName, l.instansi, l.negara, l.jobFamily, l.organization, l.startDate, l.endDate]
+      const hay = [l.nik, l.name, l.licenseNumber, l.licenseName, l.instansi, l.jobFamily, l.organization, l.startDate, l.endDate]
         .map((v) => String(v ?? '').toLowerCase()).join(' ');
       return hay.includes(q);
     });
@@ -107,7 +105,6 @@ export default function MasterLicensePage({ currentRoute, onNavigate }: Props) {
       { header: 'Instansi', get: (r) => r.instansi },
       { header: 'Start Date', get: (r) => r.startDate },
       { header: 'End Date', get: (r) => r.endDate },
-      { header: 'Negara', get: (r) => r.negara },
       { header: 'Job Family', get: (r) => r.jobFamily },
       { header: 'Organization', get: (r) => r.organization },
     ];
@@ -198,7 +195,6 @@ export default function MasterLicensePage({ currentRoute, onNavigate }: Props) {
                     <td className="py-3 px-3 text-gray-600">{l.instansi ?? '-'}</td>
                     <td className="py-3 px-3 text-gray-600 whitespace-nowrap">{l.startDate}</td>
                     <td className="py-3 px-3 text-gray-600 whitespace-nowrap">{l.endDate}</td>
-                    <td className="py-3 px-3 text-gray-600">{l.negara ?? '-'}</td>
                     <td className="py-3 px-3 text-gray-600">{l.jobFamily ?? '-'}</td>
                     <td className="py-3 px-3">
                       <ActionMenu

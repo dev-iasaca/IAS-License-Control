@@ -9,18 +9,8 @@ export type Employee = {
   area: string;
   type: string;
   status: 'Aktif' | 'Non Aktif';
-  previousNik?: string;
-  directorateCode?: string;
   group?: string;
-  groupCode?: string;
-  divisionCode?: string;
-  areaNomenklatur?: string;
   gender?: string;
-  morst?: string;
-  birthplace?: string;
-  educationLevel?: string;
-  universityName?: string;
-  idCardNumber?: string;
   email?: string;
   phoneNumber?: string;
 };
@@ -37,18 +27,8 @@ type EmployeeRow = {
   area: string | null;
   type: string | null;
   status?: string | null;
-  previous_nik: string | null;
-  directorate_code: string | null;
   group_name: string | null;
-  group_code: string | null;
-  division_code: string | null;
-  area_nomenklatur: string | null;
   gender: string | null;
-  morst: string | null;
-  birthplace: string | null;
-  education_level: string | null;
-  university_name: string | null;
-  id_card_number: string | null;
   email: string | null;
   phone_number: string | null;
 };
@@ -57,8 +37,8 @@ async function fetchEmployeesBase(
   includeStatus: boolean,
 ): Promise<{ data: EmployeeRow[] | null; error: { message: string } | null }> {
   const selectColumns = includeStatus
-    ? 'id, nik, name, organization, position, area, type, status, previous_nik, directorate_code, group_name, group_code, division_code, area_nomenklatur, gender, morst, birthplace, education_level, university_name, id_card_number, email, phone_number'
-    : 'id, nik, name, organization, position, area, type, previous_nik, directorate_code, group_name, group_code, division_code, area_nomenklatur, gender, morst, birthplace, education_level, university_name, id_card_number, email, phone_number';
+    ? 'id, nik, name, organization, position, area, type, status, group_name, gender, email, phone_number'
+    : 'id, nik, name, organization, position, area, type, group_name, gender, email, phone_number';
   const result = await (supabase as any)
     .from('employees')
     .select(selectColumns)
@@ -106,18 +86,8 @@ export async function fetchEmployees(): Promise<Employee[]> {
     area: row.area ?? '',
     type: row.type ?? '',
     status: row.status === 'Non Aktif' ? 'Non Aktif' : 'Aktif',
-    previousNik: row.previous_nik ?? undefined,
-    directorateCode: row.directorate_code ?? undefined,
     group: row.group_name ?? undefined,
-    groupCode: row.group_code ?? undefined,
-    divisionCode: row.division_code ?? undefined,
-    areaNomenklatur: row.area_nomenklatur ?? undefined,
     gender: row.gender ?? undefined,
-    morst: row.morst ?? undefined,
-    birthplace: row.birthplace ?? undefined,
-    educationLevel: row.education_level ?? undefined,
-    universityName: row.university_name ?? undefined,
-    idCardNumber: row.id_card_number ?? undefined,
     email: row.email ?? undefined,
     phoneNumber: row.phone_number ?? undefined,
   }));
@@ -227,18 +197,8 @@ export const EMPLOYEES: Employee[] = [
     area: 'Kantor Cabang SBU Logistics Baggage Services Solution Semarang',
     type: 'Kontrak',
     status: 'Aktif',
-    previousNik: '-',
-    directorateCode: 'DR-00416',
     group: 'SBU Logistics Kantor Cabang Baggage Services Solution',
-    groupCode: 'GR-17773',
-    divisionCode: 'DV-09029',
-    areaNomenklatur: 'SBULG-BSS-SRG',
     gender: 'Perempuan',
-    morst: 'Lajang',
-    birthplace: 'Tegal, 29-05-2001',
-    educationLevel: '-',
-    universityName: '-',
-    idCardNumber: '3328086805010004',
     email: 'samiaasih@gmail.com',
     phoneNumber: '082243466112',
   },
@@ -249,7 +209,7 @@ export const EMPLOYEES: Employee[] = [
     area: 'Kantor Cabang SBU Cargo Services Batam',
     type: 'Kontrak',
     status: 'Aktif',
-    gender: 'Laki-laki', morst: 'Lajang',
+    gender: 'Laki-laki',
     email: 'iqbal.qa@ias.co.id', phoneNumber: '081234567890',
   },
   {
@@ -259,7 +219,7 @@ export const EMPLOYEES: Employee[] = [
     area: 'Kantor Cabang SBU Logistics Baggage Services Solution Manado',
     type: 'Kontrak',
     status: 'Aktif',
-    gender: 'Perempuan', morst: 'Lajang',
+    gender: 'Perempuan',
     email: 'adellin.dc@ias.co.id', phoneNumber: '082112345678',
   },
   {
@@ -269,7 +229,7 @@ export const EMPLOYEES: Employee[] = [
     area: 'Kantor Cabang SBU Logistics Air Express Lombok',
     type: 'Kontrak',
     status: 'Aktif',
-    gender: 'Laki-laki', morst: 'Lajang',
+    gender: 'Laki-laki',
     email: 'lalu.aa@ias.co.id', phoneNumber: '081999887766',
   },
   {
@@ -279,7 +239,7 @@ export const EMPLOYEES: Employee[] = [
     area: 'Kantor Cabang SBU Logistics Air Express Surabaya',
     type: 'Kontrak',
     status: 'Aktif',
-    gender: 'Laki-laki', morst: 'Lajang',
+    gender: 'Laki-laki',
     email: 'adrian.ef@ias.co.id', phoneNumber: '082233445566',
   },
 ];

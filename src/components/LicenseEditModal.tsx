@@ -19,7 +19,6 @@ const EMPTY_FORM = {
   licenseNumber: '',
   licenseName: '',
   instansi: '',
-  negara: '',
   jobFamily: '',
   startDate: '',
   endDate: '',
@@ -57,7 +56,6 @@ export default function LicenseEditModal({ open, onClose, license, onSaved, next
         licenseNumber: license?.licenseNumber ?? '',
         licenseName: license?.licenseName ?? '',
         instansi: license?.instansi ?? '',
-        negara: license?.negara ?? '',
         jobFamily: license?.jobFamily ?? '',
         startDate: license?.startDate ?? '',
         endDate: license?.endDate ?? '',
@@ -159,7 +157,6 @@ export default function LicenseEditModal({ open, onClose, license, onSaved, next
             options={buildVendorOptions(form.instansi, vendors)}
             placeholder="-Select Instansi-"
           />
-          <Field label="Negara" value={form.negara} onChange={(v) => update({ negara: v })} />
           <Select
             label="Job Family"
             value={form.jobFamily}
