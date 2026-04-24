@@ -42,6 +42,15 @@ export async function updateArea(originalCode: string, input: NewArea): Promise<
 }
 
 export async function deleteArea(code: string): Promise<void> {
-  const { error } = await supabase.from('areas').delete().eq('code', code);
+  const { data, error } = await supabase
+    .from('areas')
+    .delete()
+    .eq('code', code)
+    .select('id');
   if (error) throw new Error(error.message);
+  if (!data || data.length === 0) {
+    throw new Error(
+      `Area "${code}" tidak ditemukan atau tidak dapat dihapus (cek RLS).`,
+    );
+  }
 }

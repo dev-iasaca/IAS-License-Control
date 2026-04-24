@@ -190,8 +190,17 @@ export async function updateEmployee(originalNik: string, input: NewEmployee): P
 }
 
 export async function deleteEmployee(nik: string): Promise<void> {
-  const { error } = await supabase.from('employees').delete().eq('nik', nik);
+  const { data, error } = await supabase
+    .from('employees')
+    .delete()
+    .eq('nik', nik)
+    .select('id');
   if (error) throw new Error(error.message);
+  if (!data || data.length === 0) {
+    throw new Error(
+      `Employee dengan NIK "${nik}" tidak ditemukan atau tidak dapat dihapus (cek RLS / foreign key).`,
+    );
+  }
 }
 
 export const EMPLOYEES: Employee[] = [

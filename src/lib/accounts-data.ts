@@ -101,8 +101,17 @@ export async function updateAccount(originalUsername: string, input: NewAccount)
 }
 
 export async function deleteAccount(username: string): Promise<void> {
-  const { error } = await supabase.from('accounts').delete().eq('username', username);
+  const { data, error } = await supabase
+    .from('accounts')
+    .delete()
+    .eq('username', username)
+    .select('id');
   if (error) throw new Error(error.message);
+  if (!data || data.length === 0) {
+    throw new Error(
+      `Account "${username}" tidak ditemukan atau tidak dapat dihapus (cek RLS).`,
+    );
+  }
 }
 
 export const ACCOUNTS: Account[] = [

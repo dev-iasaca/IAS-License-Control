@@ -187,12 +187,18 @@ export async function deleteLicense(target: License): Promise<void> {
   if (licErr) throw new Error(licErr.message);
   if (!lic) throw new Error(`License "${target.licenseName}" tidak ditemukan.`);
 
-  const { error: delErr } = await supabase
+  const { data: delData, error: delErr } = await supabase
     .from('license_assignments')
     .delete()
     .eq('employee_id', emp.id)
-    .eq('license_id', lic.id);
+    .eq('license_id', lic.id)
+    .select('id');
   if (delErr) throw new Error(delErr.message);
+  if (!delData || delData.length === 0) {
+    throw new Error(
+      `Assignment untuk NIK ${nik} / license "${target.licenseName}" tidak ditemukan atau tidak dapat dihapus (cek RLS).`,
+    );
+  }
 }
 
 export const LICENSES: License[] = [

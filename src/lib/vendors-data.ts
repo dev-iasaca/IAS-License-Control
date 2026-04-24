@@ -123,8 +123,17 @@ export async function updateVendor(originalName: string, input: NewVendor): Prom
 }
 
 export async function deleteVendor(name: string): Promise<void> {
-  const { error } = await supabase.from('vendors').delete().eq('name', name);
+  const { data, error } = await supabase
+    .from('vendors')
+    .delete()
+    .eq('name', name)
+    .select('id');
   if (error) throw new Error(error.message);
+  if (!data || data.length === 0) {
+    throw new Error(
+      `Vendor "${name}" tidak ditemukan atau tidak dapat dihapus (cek RLS).`,
+    );
+  }
 }
 
 export const VENDORS: Vendor[] = [

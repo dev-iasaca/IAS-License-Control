@@ -46,8 +46,17 @@ export async function updateJobFamily(originalCode: string, input: NewJobFamily)
 }
 
 export async function deleteJobFamily(code: string): Promise<void> {
-  const { error } = await supabase.from('job_families').delete().eq('code', code);
+  const { data, error } = await supabase
+    .from('job_families')
+    .delete()
+    .eq('code', code)
+    .select('id');
   if (error) throw new Error(error.message);
+  if (!data || data.length === 0) {
+    throw new Error(
+      `Job Family "${code}" tidak ditemukan atau tidak dapat dihapus (cek RLS).`,
+    );
+  }
 }
 
 export const JOB_FAMILIES: JobFamily[] = [

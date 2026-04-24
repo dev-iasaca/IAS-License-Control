@@ -46,6 +46,15 @@ export async function updatePosition(originalCode: string, input: NewPosition): 
 }
 
 export async function deletePosition(code: string): Promise<void> {
-  const { error } = await supabase.from('positions').delete().eq('code', code);
+  const { data, error } = await supabase
+    .from('positions')
+    .delete()
+    .eq('code', code)
+    .select('id');
   if (error) throw new Error(error.message);
+  if (!data || data.length === 0) {
+    throw new Error(
+      `Position "${code}" tidak ditemukan atau tidak dapat dihapus (cek RLS).`,
+    );
+  }
 }
