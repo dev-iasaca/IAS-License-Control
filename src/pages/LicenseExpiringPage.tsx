@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { AlertTriangle, ArrowUpDown, CalendarClock, CheckCircle2, Clock } from 'lucide-react';
+import { AlertTriangle, ArrowUpDown, CheckCircle2, Clock, FileBadge, XCircle } from 'lucide-react';
 import AppLayout from '../components/AppLayout';
 import PageHeader from '../components/PageHeader';
 import { Badge, Card } from '../components/shared';
@@ -51,10 +51,11 @@ export default function LicenseExpiringPage({ currentRoute, onNavigate }: Props)
 
   const stats = useMemo(() => {
     const total = rows.length;
-    const critical = rows.filter((r) => r.monthsRemaining <= 1).length;
+    const expired = rows.filter((r) => r.monthsRemaining <= 0).length;
+    const critical = rows.filter((r) => r.monthsRemaining > 0 && r.monthsRemaining <= 1).length;
     const warning = rows.filter((r) => r.monthsRemaining > 1 && r.monthsRemaining <= 3).length;
     const active = rows.filter((r) => r.status === 'Aktif').length;
-    return { total, critical, warning, active };
+    return { total, expired, critical, warning, active };
   }, [rows]);
 
   const filtered = useMemo(() => {
@@ -81,10 +82,11 @@ export default function LicenseExpiringPage({ currentRoute, onNavigate }: Props)
       />
 
       <div className="max-w-screen-2xl mx-auto px-6 py-5 space-y-5">
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <StatCard icon={CalendarClock} label="Total License Expiring" value={stats.total} color="sky" />
-          <StatCard icon={AlertTriangle} label="Kritis (≤ 1 bulan)" value={stats.critical} color="rose" />
-          <StatCard icon={Clock} label="Warning (≤ 3 bulan)" value={stats.warning} color="amber" />
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+          <StatCard icon={FileBadge} label="Total License" value={stats.total} color="teal" />
+          <StatCard icon={XCircle} label="Expired" value={stats.expired} color="rose" />
+          <StatCard icon={AlertTriangle} label="Kritis (≤ 1 bulan)" value={stats.critical} color="amber" />
+          <StatCard icon={Clock} label="Warning (≤ 3 bulan)" value={stats.warning} color="sky" />
           <StatCard icon={CheckCircle2} label="Status Aktif" value={stats.active} color="emerald" />
         </div>
 
@@ -209,13 +211,14 @@ function StatCard({
   icon: typeof AlertTriangle;
   label: string;
   value: number;
-  color: 'sky' | 'rose' | 'amber' | 'emerald';
+  color: 'sky' | 'rose' | 'amber' | 'emerald' | 'teal';
 }) {
   const ring: Record<typeof color, string> = {
     sky: 'bg-sky-50 text-sky-600',
     rose: 'bg-rose-50 text-rose-600',
     amber: 'bg-amber-50 text-amber-600',
     emerald: 'bg-emerald-50 text-emerald-600',
+    teal: 'bg-teal-50 text-teal-600',
   };
   return (
     <div className="bg-white rounded-lg border border-gray-100 shadow-sm p-4 flex items-center gap-4">
