@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import Modal from './Modal';
 import { fetchEmployeeNameByNik, insertLicense, updateLicense, type License } from '../lib/licenses-data';
+import { fetchJobFamilies, type JobFamily } from '../lib/job-families-data';
 
 type Props = {
   open: boolean;
@@ -30,6 +31,18 @@ export default function LicenseEditModal({ open, onClose, license, onSaved, next
   const [error, setError] = useState<string | null>(null);
   const [nikLookup, setNikLookup] = useState<'idle' | 'loading' | 'found' | 'not-found'>('idle');
   const lookupTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [jobFamilies, setJobFamilies] = useState<JobFamily[]>([]);
+
+  useEffect(() => {
+    if (!open) return;
+    (async () => {
+      try {
+        setJobFamilies(await fetchJobFamilies());
+      } catch {
+        /* silent — select will fall back to current value */
+      }
+    })();
+  }, [open]);
 
   useEffect(() => {
     if (open) {
@@ -137,7 +150,13 @@ export default function LicenseEditModal({ open, onClose, license, onSaved, next
           <Field label="License Name" value={form.licenseName} onChange={(v) => update({ licenseName: v })} />
           <Field label="Instansi" value={form.instansi} onChange={(v) => update({ instansi: v })} />
           <Field label="Negara" value={form.negara} onChange={(v) => update({ negara: v })} />
-          <Field label="Job Family" value={form.jobFamily} onChange={(v) => update({ jobFamily: v })} />
+          <Select
+            label="Job Family"
+            value={form.jobFamily}
+            onChange={(v) => update({ jobFamily: v })}
+            options={buildJobFamilyOptions(form.jobFamily, jobFamilies)}
+            placeholder="-Select Job Family-"
+          />
           <Field label="Start Date" type="date" value={form.startDate} onChange={(v) => update({ startDate: v })} />
           <Field label="End Date" type="date" value={form.endDate} onChange={(v) => update({ endDate: v })} />
           {error && (
@@ -203,3 +222,42 @@ function Field({
     </label>
   );
 }
+
+function Select({
+  label,
+  value,
+  onChange,
+  options,
+  placeholder,
+}: {
+  label: string;
+  value: string;
+  onChange: (v: string) => void;
+  options: string[];
+  placeholder?: string;
+}) {
+  return (
+    <label className="flex flex-col gap-1 text-xs">
+      <span className="text-gray-600">{label}</span>
+      <select
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        className="border border-gray-200 rounded-md px-3 py-2 text-xs bg-white focus:outline-none focus:border-teal-400"
+      >
+        {placeholder && <option value="">{placeholder}</option>}
+        {options.map((o) => (
+          <option key={o} value={o}>
+            {o}
+          </option>
+        ))}
+      </select>
+    </label>
+  );
+}
+
+function buildJobFamilyOptions(current: string, list: JobFamily[]): string[] {
+  const names = list.map((j) => j.name).filter((n) => n.trim() !== '');
+  if (current && !names.includes(current)) return [current, ...names];
+  return names;
+}
+
