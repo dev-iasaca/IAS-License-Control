@@ -19,11 +19,13 @@ export type NewAccount = Omit<Account, 'no' | 'lastLogin'>;
 type AccountRow = {
   id: number;
   username: string;
+  nik: string | null;
+  full_name: string | null;
+  organization: string | null;
   email: string | null;
   role: string;
   status: AccountStatus;
   last_login_at: string | null;
-  employee: { nik: string | null; name: string | null; organization: string | null } | null;
 };
 
 function formatLastLogin(iso: string | null): string {
@@ -36,40 +38,32 @@ function formatLastLogin(iso: string | null): string {
 export async function fetchAccounts(): Promise<Account[]> {
   const { data, error } = await supabase
     .from('accounts')
-    .select('id, username, email, role, status, last_login_at, employee:employees(nik, name, organization)')
+    .select('id, username, nik, full_name, organization, email, role, status, last_login_at')
     .order('id', { ascending: true })
     .returns<AccountRow[]>();
   if (error) throw new Error(error.message);
   return (data ?? []).map((row, idx) => ({
     no: idx + 1,
     username: row.username,
-    nik: row.employee?.nik ?? '',
-    name: row.employee?.name ?? '',
+    nik: row.nik ?? '',
+    name: row.full_name ?? '',
     email: row.email ?? '',
     role: row.role,
-    org: row.employee?.organization ?? '',
+    org: row.organization ?? '',
     status: row.status,
     lastLogin: formatLastLogin(row.last_login_at),
   }));
 }
 
 export async function insertAccount(input: NewAccount, nextNo: number): Promise<Account> {
-  let employeeId: number | null = null;
-  if (input.nik.trim()) {
-    const { data: emp } = await supabase
-      .from('employees')
-      .select('id')
-      .eq('nik', input.nik.trim())
-      .maybeSingle();
-    if (emp) employeeId = emp.id as number;
-  }
-
   const { error } = await supabase.from('accounts').insert({
     username: input.username,
+    nik: input.nik.trim() || null,
+    full_name: input.name.trim() || null,
+    organization: input.org.trim() || null,
     email: input.email || null,
     role: input.role,
     status: input.status,
-    employee_id: employeeId,
   });
   if (error) throw new Error(error.message);
 
@@ -77,24 +71,16 @@ export async function insertAccount(input: NewAccount, nextNo: number): Promise<
 }
 
 export async function updateAccount(originalUsername: string, input: NewAccount): Promise<void> {
-  let employeeId: number | null = null;
-  if (input.nik.trim()) {
-    const { data: emp } = await supabase
-      .from('employees')
-      .select('id')
-      .eq('nik', input.nik.trim())
-      .maybeSingle();
-    if (emp) employeeId = emp.id as number;
-  }
-
   const { error } = await supabase
     .from('accounts')
     .update({
       username: input.username,
+      nik: input.nik.trim() || null,
+      full_name: input.name.trim() || null,
+      organization: input.org.trim() || null,
       email: input.email || null,
       role: input.role,
       status: input.status,
-      employee_id: employeeId,
     })
     .eq('username', originalUsername);
   if (error) throw new Error(error.message);
